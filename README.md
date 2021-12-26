@@ -1,7 +1,5 @@
-## ruDolph 🎄🦌🧑‍🎄
+## <img src="https://raw.githubusercontent.com/shonenkov/ru-dolph/master/pics/rudolph.png?token=AHV2MCJMQUG6XNNBBGCVQM3B2HKB6" height="60"/> ruDolph 🎄🦌🧑‍🎄 
 pretrained sparse-transformer with two swapped modalities
-
-[comment]: <> (![]&#40;./pics/rudolph.png&#41;)
 
 # Sparse Attention Mask
 `row - col - row - [last] conv`
