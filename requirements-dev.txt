@@ -1,0 +1,9 @@
+torch
+torchvision
+einops~=0.3.0
+pytest~=6.2.4
+pytest-cov~=2.12.1
+youtokentome~=1.0.6
+tqdm~=4.62.2
+torchmetrics==0.5.0
+pre-commit
