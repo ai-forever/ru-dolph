@@ -4,7 +4,6 @@ import torch.nn.functional as F
 from einops import rearrange
 
 from .utils import init_method_normal
-
 from .transformer import SparseTransformer
 
 
@@ -119,19 +118,25 @@ class ruDolphModel(torch.nn.Module):
         l_text_pos = self.l_text_pos_embeddings(torch.arange(l_text.shape[1], device=device))
         l_text_embeddings = self.text_embeddings(l_text) + l_text_pos
 
-        r_text = input_ids[:, -self.r_text_seq_length:]
-        r_text_pos = self.r_text_pos_embeddings(torch.arange(r_text.shape[1], device=device))
-        r_text_embeddings = self.text_embeddings(r_text) + r_text_pos
+        embeddings = [l_text_embeddings]
+        if input_ids.shape[1] > self.l_text_seq_length:
+            image_input_ids = input_ids[:, self.l_text_seq_length:self.l_text_seq_length + self.image_seq_length]
+            img_pos = self.get_image_pos_embeddings(image_input_ids, past_length=0, device=device)
+            image_embeddings = self.image_embeddings(image_input_ids) + img_pos
+            embeddings.append(image_embeddings)
 
-        image_input_ids = input_ids[:, self.l_text_seq_length:-self.r_text_seq_length]
+        if input_ids.shape[1] > self.l_text_seq_length + self.image_seq_length:
+            r_text = input_ids[:, self.l_text_seq_length + self.image_seq_length:]
+            r_text_pos = self.r_text_pos_embeddings(torch.arange(r_text.shape[1], device=device))
+            r_text_embeddings = self.text_embeddings(r_text) + r_text_pos
+            embeddings.append(r_text_embeddings)
 
-        img_pos = self.get_image_pos_embeddings(image_input_ids, past_length=0, device=device)
-        image_embeddings = self.image_embeddings(image_input_ids) + img_pos
-        embeddings = torch.cat((l_text_embeddings, image_embeddings, r_text_embeddings), dim=1)
+        embeddings = torch.cat(embeddings, dim=1)
 
         alpha = 0.1
         embeddings = embeddings * alpha + embeddings.detach() * (1 - alpha)
 
+        attention_mask = attention_mask[:, :, :embeddings.shape[1], :embeddings.shape[1]]
         transformer_output, present_has_cache = self.transformer(
             embeddings, attention_mask, has_cache=has_cache, use_cache=use_cache,
             gradient_checkpointing=self.gradient_checkpointing
@@ -159,7 +164,8 @@ class ruDolphModel(torch.nn.Module):
         )
         loss_r_text = F.cross_entropy(
             r_text_logits,
-            labels[:, -(self.r_text_seq_length-1):]
+            labels[:, -(self.r_text_seq_length-1):],
+            ignore_index=0,
         )
 
         loss = 0
