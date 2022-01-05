@@ -125,6 +125,7 @@ class SparseTransformer(torch.nn.Module):
         if gradient_checkpointing:
             assert not use_cache
             layers = []
+        all_hidden_states = []
         for i, layer in enumerate(self.layers):
             mask = attention_mask
             layer_mask = self._get_layer_mask(i)[:mask.size(2), :mask.size(3)]
@@ -138,13 +139,15 @@ class SparseTransformer(torch.nn.Module):
             else:
                 hidden_states, present_has_cache = layer(
                     hidden_states, mask, has_cache=has_cache, use_cache=use_cache)
+                all_hidden_states.append(hidden_states)
         if gradient_checkpointing:
             hidden_states = torch.utils.checkpoint.checkpoint_sequential(
                 layers, gradient_checkpointing, hidden_states)
+            all_hidden_states.append(hidden_states)
             present_has_cache = False
         hidden_states = rescale_max(hidden_states, self.custom_relax)
         output = self.final_layernorm(hidden_states)
-        return output, present_has_cache
+        return output, present_has_cache, all_hidden_states
 
 
 class SparseTransformerLayer(torch.nn.Module):

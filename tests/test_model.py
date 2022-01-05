@@ -25,6 +25,8 @@ def test_forward(toy_model):
         ]).long()
         #
         input_ids = torch.cat((l_text_input_ids, image_input_ids, r_text_input_ids), dim=1)
-        loss, loss_values = toy_model.forward(input_ids, attention_mask, return_loss=True)
+        loss, loss_values, hidden_states = toy_model.forward(input_ids, attention_mask, return_loss=True,
+                                                             return_hidden_states=True)
         assert type(loss.data.detach().item()) == float
         assert type(loss_values) == dict
+        assert len(hidden_states) == 24
