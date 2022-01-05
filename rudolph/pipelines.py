@@ -14,6 +14,7 @@ from tqdm.auto import tqdm
 from einops import rearrange
 
 from . import utils
+from .model.utils import get_i2t_attention_mask
 
 
 def generate_codebooks(
@@ -109,16 +110,21 @@ def self_reranking(
     l_text_seq_length = model.get_param('l_text_seq_length')
     r_text_seq_length = model.get_param('r_text_seq_length')
     image_seq_length = model.get_param('image_seq_length')
-    total_seq_length = l_text_seq_length + image_seq_length + r_text_seq_length
+    image_tokens_per_dim = model.get_param('image_tokens_per_dim')
     device = model.get_param('device')
 
     text = text.lower().strip()
-    encoded = tokenizer.encode_text(text, text_seq_length=l_text_seq_length)
+    encoded = tokenizer.encode_text(text, text_seq_length=r_text_seq_length)
+    mask = torch.zeros(r_text_seq_length, dtype=torch.int64)
+    mask[encoded != 0] = 1
     ppl_text, ppl_image = [], []
     for chunk in more_itertools.chunked(codebooks, bs):
         chunk_bs = len(chunk)
         with torch.no_grad():
-            attention_mask = torch.tril(torch.ones((chunk_bs, 1, total_seq_length, total_seq_length), device=device))
+            attention_mask = get_i2t_attention_mask(
+                mask.unsqueeze(0).repeat(chunk_bs, 1).to(device),
+                chunk_bs, l_text_seq_length, image_tokens_per_dim, r_text_seq_length, device
+            )
             input_ids = torch.cat((
                 torch.zeros((chunk_bs, l_text_seq_length), dtype=torch.int64).to(device),
                 torch.stack(chunk),

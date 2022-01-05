@@ -108,6 +108,7 @@ class ruDolphModel(torch.nn.Module):
         lt_loss_weight=1,
         img_loss_weight=7,
         rt_loss_weight=1,
+        return_hidden_states=False,
     ):
         device = input_ids.device
         l_text = input_ids[:, :self.l_text_seq_length]
@@ -137,14 +138,17 @@ class ruDolphModel(torch.nn.Module):
         embeddings = embeddings * alpha + embeddings.detach() * (1 - alpha)
 
         attention_mask = attention_mask[:, :, :embeddings.shape[1], :embeddings.shape[1]]
-        transformer_output, present_has_cache = self.transformer(
+        transformer_output, present_has_cache, hidden_states = self.transformer(
             embeddings, attention_mask, has_cache=has_cache, use_cache=use_cache,
             gradient_checkpointing=self.gradient_checkpointing
         )
 
         logits = self.to_logits(transformer_output)
         if return_loss is False:
-            return logits, present_has_cache
+            outputs = (logits, present_has_cache)
+            if return_hidden_states:
+                outputs += (hidden_states,)
+            return outputs
 
         logits = rearrange(logits, 'b n c -> b c n')
 
@@ -176,11 +180,14 @@ class ruDolphModel(torch.nn.Module):
         if rt_loss_weight:
             loss += loss_r_text*rt_loss_weight
         loss = loss / (lt_loss_weight + img_loss_weight + rt_loss_weight)
-        return loss, {
+        outputs = (loss, {
             'l_text_loss': loss_l_text.data.detach().float(),
             'image_loss': loss_img.data.detach().float(),
             'r_text_loss': loss_r_text.data.detach().float(),
-        }
+        })
+        if return_hidden_states:
+            outputs += (hidden_states,)
+        return outputs
 
     def to(self, device, *args, **kwargs):
         self.device = device
