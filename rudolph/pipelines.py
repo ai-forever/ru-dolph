@@ -217,7 +217,7 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, template=''):
         logits = rearrange(logits, 'b n c -> b c n')
 
         image_logits = logits[:, vocab_size:,
-                              l_text_seq_length:l_text_seq_length + image_seq_length - 1].contiguous()  # .float()
+                              l_text_seq_length:l_text_seq_length + image_seq_length - 1].contiguous()
         r_text_logits = logits[:, :vocab_size, -r_text_seq_length:-1].contiguous()
 
         ppl_text = torch.exp(F.cross_entropy(
