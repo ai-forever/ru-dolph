@@ -111,7 +111,6 @@ def self_reranking(
     r_text_seq_length = model.get_param('r_text_seq_length')
     image_seq_length = model.get_param('image_seq_length')
     image_tokens_per_dim = model.get_param('image_tokens_per_dim')
-    total_seq_length = l_text_seq_length + image_seq_length + r_text_seq_length
     device = model.get_param('device')
 
     text = text.lower().strip()
