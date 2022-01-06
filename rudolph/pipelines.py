@@ -141,19 +141,19 @@ def self_reranking(
             input_ids = input_ids.contiguous().long()
 
             ppl_image.append(
-                torch.exp(F.cross_entropy(
+                ce_to_ppl(F.cross_entropy(
                     image_logits,
                     input_ids[:, l_text_seq_length + 1:l_text_seq_length + image_seq_length],
                     reduction='none',
-                )).mean(-1)
+                ))
             )
             ppl_text.append(
-                torch.exp(F.cross_entropy(
+                ce_to_ppl(F.cross_entropy(
                     r_text_logits,
                     input_ids[:, -(r_text_seq_length - 1):],
                     ignore_index=0,
                     reduction='none',
-                )).mean(-1)
+                ))
             )
     return torch.cat(ppl_text), torch.cat(ppl_image)
 
@@ -220,18 +220,18 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, template=''):
                               l_text_seq_length:l_text_seq_length + image_seq_length - 1].contiguous()
         r_text_logits = logits[:, :vocab_size, -r_text_seq_length:-1].contiguous()
 
-        ppl_text = torch.exp(F.cross_entropy(
+        ppl_text = ce_to_ppl(F.cross_entropy(
             r_text_logits[:, :, template_size:],
             input_ids[:, -(r_text_seq_length - 1 - template_size):],
             ignore_index=0,
             reduction='none',
-        )).mean(-1)
+        ))
 
-        ppl_image = torch.exp(F.cross_entropy(
+        ppl_image = ce_to_ppl(F.cross_entropy(
             image_logits,
             input_ids[:, l_text_seq_length + 1:l_text_seq_length + image_seq_length],
             reduction='none',
-        )).mean(-1)
+        ))
 
         pred = ppl_text.argmin().item()
 
@@ -241,3 +241,10 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, template=''):
         'ppl_text': ppl_text.cpu().numpy(),
         'ppl_image': ppl_image.cpu().numpy(),
     }
+
+
+def ce_to_ppl(ce):
+    indexes = torch.where(ce)
+    ce[indexes] = torch.exp(ce[indexes])
+    ppl = ce.sum(1) / torch.unique(indexes[0], return_counts=True)[1]
+    return ppl
