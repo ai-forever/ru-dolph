@@ -1,6 +1,5 @@
-## <img src="https://raw.githubusercontent.com/shonenkov/ru-dolph/master/pics/rudolph.png?token=AHV2MCOWDUYEND527HLVOPDB3MLAK" height="60"/> ruDolph 🎄🦌🧑‍🎄 
-pretrained sparse-transformer with two swapped modalities
-
+## <img src="https://raw.githubusercontent.com/shonenkov/ru-dolph/master/pics/rudolph.png?token=AHV2MCOWDUYEND527HLVOPDB3MLAK" height="60"/> RuDolph 🦌🎄☃️
+**Ru**ssian **D**iffusion **O**n **L**anguage **P**icture **H**yper-modality Transformer
 # Sparse Attention Mask
 `row - col - row - [last] conv`
 
@@ -17,7 +16,7 @@ pretrained sparse-transformer with two swapped modalities
 
 ```
 @article{shonenkov2022ruDolph,
-  title         = {ruDolph - sparse-transformer with two swapped modalities: a technical report},
+  title         = {Russian Diffusion On Language Picture Hyper-modality (RuDOLPH) Transformer: Technical Report},
   author        = {Alex Shonenkov and Michael Konstantinov},
   year          = {2022},
   eprint        = {...},
@@ -28,9 +27,9 @@ pretrained sparse-transformer with two swapped modalities
 
 ```
 @misc{github2022ruDolph,
-  title         = {ruDolph - sparse-transformer with two swapped modalities},
+  title         = {Russian Diffusion On Language Picture Hyper-modality (RuDOLPH) Transformer},
   author        = {Alex Shonenkov and Michael Konstantinov},
   year          = {2022},
-  howpublished  = {\url{https://github.com/shonenkov/ru-dolph}},
+  howpublished  = {\url{https://github.com/sberbank-ai/ru-dolph}},
 }
 ```
