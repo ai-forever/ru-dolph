@@ -107,6 +107,44 @@ show(pil_images, 8)
 ![](./pics/pipelines/lake_night.png)
 
 
+### Image Prompt (like Inpainting)
+![](pics/pipelines/lake_image_prompt.png)
+```python
+text = 'лодка с алыми парусами'
+
+images_num = 1024
+bs = 128
+
+borders = {'up': 6, 'left': 4, 'right': 6, 'down': 2}
+image_prompts = ImagePrompts(pil_img, borders, vae, device, crop_first=True)
+
+seed_everything(42)
+codebooks = []
+for top_k, top_p, images_num in [
+    (1024, 0.99, images_num),
+]:
+    codebooks.append(
+        generate_codebooks(text, tokenizer, model, top_k=top_k, images_num=images_num, top_p=top_p, bs=bs, image_prompts=image_prompts)
+    )
+
+codebooks = torch.cat(codebooks)
+
+ppl_text, ppl_image = self_reranking_by_text(
+    text,
+    codebooks,
+    tokenizer,
+    model,
+    bs=bs,
+)
+with torch.no_grad():
+    images = vae.decode(codebooks[ppl_text.argsort()[:16]])
+
+pil_images = utils.torch_tensors_to_pil_list(images)
+show(pil_images, 8)
+```
+![](./pics/pipelines/lake_ship.png)
+
+
 # Authors: 
 
 + Alex Shonenkov: [Github](https://github.com/shonenkov), [Kaggle GM](https://www.kaggle.com/shonenkov)
