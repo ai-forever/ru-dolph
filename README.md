@@ -56,6 +56,56 @@ generate_texts(
  {'text': 'красивый пейзаж с видом на горы в таиланде', 'ppl': 219.86}]
 ```
 
+**Image Generation + Self Reranking** 
+```python
+text = 'красивый пейзаж с озером и лесом на заднем плане'
+images_num = 256
+seed_everything(42)
+codebooks = []
+for top_k, top_p, images_num in [
+    (2048, 0.99, images_num),
+    (1024, 0.99, images_num),
+    (1024, 0.98, images_num),
+]:
+    codebooks.append(generate_codebooks(text, tokenizer, model, top_k=top_k, images_num=images_num, top_p=top_p, bs=128))
+
+codebooks = torch.cat(codebooks)
+
+ppl_text, ppl_image = self_reranking_by_text(text, codebooks, tokenizer, model, bs=32)
+with torch.no_grad():
+    images = vae.decode(codebooks[ppl_text.argsort()[:25]])
+
+pil_images = utils.torch_tensors_to_pil_list(images)
+show(pil_images, 5)
+```
+![](./pics/pipelines/lake.png)
+
+
+```python
+text = 'зимнее время года'
+
+ppl_text, ppl_image = self_reranking_by_text(text, codebooks, tokenizer, model, bs=32)
+with torch.no_grad():
+    images = vae.decode(codebooks[ppl_text.argsort()[:25]])
+
+pil_images = utils.torch_tensors_to_pil_list(images)
+show(pil_images, 5)
+```
+![](./pics/pipelines/lake_winter.png)
+
+
+```python
+text = 'ночное время суток'
+
+ppl_text, ppl_image = self_reranking_by_text(text, codebooks, tokenizer, model, bs=32)
+with torch.no_grad():
+    images = vae.decode(codebooks[ppl_text.argsort()[:25]])
+
+pil_images = utils.torch_tensors_to_pil_list(images)
+show(pil_images, 5)
+```
+![](./pics/pipelines/lake_night.png)
+
 
 # Authors: 
 
