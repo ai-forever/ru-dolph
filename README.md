@@ -15,6 +15,8 @@
 
 ![](./pics/attention_masks.png)
 
+![](./pics/high_res.png)
+
 # Installing
 ```
 pip install rudolph==0.0.1rc0
