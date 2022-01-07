@@ -112,7 +112,7 @@ class ruDolphModel(torch.nn.Module):
     ):
         device = input_ids.device
         l_text = input_ids[:, :self.l_text_seq_length]
-        l_text_range = torch.arange(self.l_text_seq_length)
+        l_text_range = torch.arange(l_text.shape[1])
         l_text_range += (self.vocab_size - self.l_text_seq_length)
         l_text_range = l_text_range.to(device)
         l_text = torch.where(l_text == 0, l_text_range, l_text)
