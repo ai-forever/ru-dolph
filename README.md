@@ -4,11 +4,9 @@
 
 *One Hyper-Modal Transformer can be creative as DALL-E and smart as CLIP*
 
-
-
 **Ru**ssian **D**iffusion **O**n **L**anguage **P**icture **H**yper-modality (RuDOLPH) Transformer
 
-
+![](./pics/scheme.png)
 
 # Sparse Attention Mask
 `row - col - row - [last] conv`
