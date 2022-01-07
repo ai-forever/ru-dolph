@@ -114,7 +114,7 @@ show(pil_images, 8)
 text = 'лодка с алыми парусами'
 
 images_num = 1024
-bs = 128
+bs = 32
 
 borders = {'up': 6, 'left': 4, 'right': 6, 'down': 2}
 image_prompts = ImagePrompts(pil_img, borders, vae, device, crop_first=True)
