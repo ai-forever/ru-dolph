@@ -144,6 +144,26 @@ show(pil_images, 8)
 ```
 ![](./pics/pipelines/lake_ship.png)
 
+### Diffusion (TODO, see Colab)
+
+### Image Captioning
+![](./pics/pipelines/final_lake_ship.png)
+```python
+texts = generate_captions(pil_img, tokenizer, model, vae, template='на картинке ', top_k=8, captions_num=128, bs=128, top_p=0.6, seed=42)
+ppl_text, ppl_image = self_reranking_by_image(texts, pil_img, tokenizer, model, vae, bs=16, seed=42)
+for idx in ppl_image.argsort()[:8]:
+    print(f'-{texts[idx]}')
+
+-на картинке я хочу увидеть как выглядит дом в горах
+-на картинке нарисована лодка с каяком и лесом
+-на картинке нарисован дом с бассейном
+-на картинке – пейзаж – горы – одна из самых красивых мест на планете
+-на картинке: в норвегии
+-на картинке в горах
+-на картинке я хочу нарисовать дом
+-на картинке изображен домик на горе
+```
+
 
 # Authors: 
 
