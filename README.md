@@ -22,8 +22,7 @@
 + Alex Shonenkov: [Github](https://github.com/shonenkov), [Kaggle GM](https://www.kaggle.com/shonenkov)
 + Michael Konstantinov: [Mishin Learning](https://t.me/mishin_learning), [Transformer Community](https://transformer.community/)
 
-<img src='https://habrastorage.org/webt/2w/5k/2r/2w5k2reyf6yqa4s7ywmmioaaieg.png' alt="Drawing" width="150" />
-<img src='https://habrastorage.org/webt/eq/ft/g3/eqftg3_8l1b_fpimhiof7knytzk.png' alt="Drawing" width="150" />
+<img src='https://habrastorage.org/webt/2w/5k/2r/2w5k2reyf6yqa4s7ywmmioaaieg.png' alt="Drawing" width="150" />  <img src='https://habrastorage.org/webt/eq/ft/g3/eqftg3_8l1b_fpimhiof7knytzk.png' alt="Drawing" width="150" />
 
 # Citation
 
