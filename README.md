@@ -1,6 +1,6 @@
 [[Paper]]() [[Хабр]]() [[Model Card]](https://huggingface.co/sberbank-ai/RuDOLPH-350M) [[Colab]]() [[Kaggle]]()
 
-## <img src="https://raw.githubusercontent.com/shonenkov/ru-dolph/master/pics/rudolph.png?token=AHV2MCOWDUYEND527HLVOPDB3MLAK" height="60"/> RuDOLPH 🦌🎄☃️
+## <img src="https://raw.githubusercontent.com/sberbank-ai/ru-dolph/master/pics/rudolph.png?token=GHSAT0AAAAAABQH6MST7ZEGAF274DV33K7KYOYRSBQ" height="60"/> RuDOLPH 🦌🎄☃️
 
 *One Hyper-Modal Transformer can be creative as DALL-E and smart as CLIP*
 
