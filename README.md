@@ -73,10 +73,10 @@ codebooks = torch.cat(codebooks)
 
 ppl_text, ppl_image = self_reranking_by_text(text, codebooks, tokenizer, model, bs=32)
 with torch.no_grad():
-    images = vae.decode(codebooks[ppl_text.argsort()[:25]])
+    images = vae.decode(codebooks[ppl_text.argsort()[:16]])
 
 pil_images = utils.torch_tensors_to_pil_list(images)
-show(pil_images, 5)
+show(pil_images, 8)
 ```
 ![](./pics/pipelines/lake.png)
 
@@ -86,10 +86,10 @@ text = 'зимнее время года'
 
 ppl_text, ppl_image = self_reranking_by_text(text, codebooks, tokenizer, model, bs=32)
 with torch.no_grad():
-    images = vae.decode(codebooks[ppl_text.argsort()[:25]])
+    images = vae.decode(codebooks[ppl_text.argsort()[:16]])
 
 pil_images = utils.torch_tensors_to_pil_list(images)
-show(pil_images, 5)
+show(pil_images, 8)
 ```
 ![](./pics/pipelines/lake_winter.png)
 
@@ -99,10 +99,10 @@ text = 'ночное время суток'
 
 ppl_text, ppl_image = self_reranking_by_text(text, codebooks, tokenizer, model, bs=32)
 with torch.no_grad():
-    images = vae.decode(codebooks[ppl_text.argsort()[:25]])
+    images = vae.decode(codebooks[ppl_text.argsort()[:16]])
 
 pil_images = utils.torch_tensors_to_pil_list(images)
-show(pil_images, 5)
+show(pil_images, 8)
 ```
 ![](./pics/pipelines/lake_night.png)
 
