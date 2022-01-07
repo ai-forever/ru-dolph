@@ -19,6 +19,12 @@ to visual question answering and more. This model demonstrates the power of Hype
 
 ![](./pics/attention_masks.png)
 
+# Models
++ [350M (RuDOLPH)]((https://huggingface.co/sberbank-ai/RuDOLPH-350M))
++ 1.3B (In Progress)
++ 4B (In Progress)
+
+
 ![](./pics/high_res.png)
 
 # Installing
