@@ -1,4 +1,4 @@
-[[Paper]]() [[Хабр]]() [[Model Card]](https://huggingface.co/sberbank-ai/RuDOLPH-350M) [[Colab]]() [[Kaggle]]()
+[[Paper]]() [[Хабр]]() [[Model Card]](https://huggingface.co/sberbank-ai/RuDOLPH-350M) [[Colab]](https://colab.research.google.com/drive/1gmTDA13u709OXiAeXWGm7sPixRhEJCga?usp=sharing) [[Kaggle]]()
 
 ## <img src="https://raw.githubusercontent.com/sberbank-ai/ru-dolph/master/pics/rudolph.png?token=GHSAT0AAAAAABQH6MST7ZEGAF274DV33K7KYOYRSBQ" height="60"/> RuDOLPH 🦌🎄☃️
 
@@ -158,7 +158,7 @@ show(pil_images, 8)
 ```
 ![](./pics/pipelines/lake_ship.png)
 
-### Diffusion (TODO, see Colab)
+### Diffusion (TODO, see [Colab](https://colab.research.google.com/drive/1gmTDA13u709OXiAeXWGm7sPixRhEJCga?usp=sharing))
 
 ### Image Captioning + Self Reranking
 
@@ -253,7 +253,7 @@ for i, bs4_url in enumerate(bs4_urls):
 ```
 ![](./pics/pipelines/zs_clf.png)
 
-### Linear Probe (TODO, see Colab)
+### Linear Probe (TODO, see [Colab](https://colab.research.google.com/drive/1gmTDA13u709OXiAeXWGm7sPixRhEJCga?usp=sharing))
 
 # Authors: 
 
