@@ -2,6 +2,7 @@
 import os
 from glob import glob
 from os.path import join
+from datetime import datetime
 
 import torch
 import torchvision
@@ -30,6 +31,9 @@ def generate_codebooks(
     # TODO docstring
     if seed is not None:
         utils.seed_everything(seed)
+    else:
+        seed = int((datetime.utcnow().timestamp() * 10 ** 6) % (2 ** 32 - 1))
+        utils.seed_everything(seed)
 
     vocab_size = model.get_param('vocab_size')
     l_text_seq_length = model.get_param('l_text_seq_length')
@@ -39,7 +43,7 @@ def generate_codebooks(
     device = model.get_param('device')
 
     text = text.lower().strip()
-    encoded = tokenizer.encode_text(text, text_seq_length=l_text_seq_length)
+    encoded = tokenizer.encode_text(text, text_seq_length=r_text_seq_length)
     codebooks = []
     for chunk in more_itertools.chunked(range(images_num), bs):
         chunk_bs = len(chunk)
@@ -66,6 +70,87 @@ def generate_codebooks(
             codebooks.append(out[:, -image_seq_length:])
 
     return torch.cat(codebooks)
+
+
+def generate_captions(
+        pil_img,
+        tokenizer,
+        model,
+        vae,
+        template='',
+        top_k=32, top_p=0.6, captions_num=128,
+        temperature=1.0, bs=64,
+        seed=None, use_cache=True,
+):
+    if seed is None:
+        seed = int((datetime.utcnow().timestamp() * 10 ** 6) % (2 ** 32 - 1))
+    utils.seed_everything(seed)
+
+    vocab_size = model.get_param('vocab_size')
+    image_tokens_per_dim = model.get_param('image_tokens_per_dim')
+    l_text_seq_length = model.get_param('l_text_seq_length')
+    r_text_seq_length = model.get_param('r_text_seq_length')
+    image_seq_length = model.get_param('image_seq_length')
+    device = model.get_param('device')
+
+    image_transform = T.Compose([
+        T.Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
+        T.RandomResizedCrop(image_tokens_per_dim * 8,
+                            scale=(1., 1.),
+                            ratio=(1., 1.)),
+        T.ToTensor()
+    ])
+    img = image_transform(pil_img)
+
+    template = template.lower().strip()
+    template_encoded = tokenizer.encode_text(template, text_seq_length=r_text_seq_length)
+    template_size = (template_encoded != 0).sum() - 1  # eos
+    template_encoded = template_encoded[:template_size]
+
+    generated_tokens = []
+    for chunk in more_itertools.chunked(range(captions_num), bs):
+        chunk_bs = len(chunk)
+        with torch.no_grad():
+            masks = torch.ones(chunk_bs, r_text_seq_length, dtype=torch.int32)
+            attention_mask = get_i2t_attention_mask(masks, chunk_bs, l_text_seq_length, image_tokens_per_dim,
+                                                    r_text_seq_length, device)
+
+            images = img.unsqueeze(0).repeat((chunk_bs, 1, 1, 1)).to(device)
+            image_input_ids = vae.get_codebook_indices(images)
+
+            out = torch.cat((
+                torch.zeros((chunk_bs, l_text_seq_length), dtype=torch.int64).to(device),
+                image_input_ids,
+                template_encoded.repeat(chunk_bs, 1).to(device),
+            ), dim=1)
+
+            has_cache = False
+            for _ in tqdm(range(
+                    l_text_seq_length + image_seq_length + template_size,
+                    l_text_seq_length + image_seq_length + r_text_seq_length
+            )):
+                logits, has_cache = model(out, attention_mask,
+                                          has_cache=has_cache, use_cache=use_cache, return_loss=False)
+
+                logits = logits[:, -1, :vocab_size - l_text_seq_length]
+                logits /= temperature
+                filtered_logits = transformers.top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
+                probs = torch.nn.functional.softmax(filtered_logits, dim=-1)
+                sample = torch.multinomial(probs, 1)
+                out = torch.cat((out, sample), dim=-1)
+
+            generated_tokens.append(out[:, -r_text_seq_length:])
+
+    generated_tokens = torch.cat(generated_tokens)
+
+    texts = set()
+    for tokens in generated_tokens:
+        end = torch.where(tokens == 3)[0].shape[0] or tokens.shape[0]
+        text = tokenizer.decode_text(tokens[:end]).strip()
+        if text:
+            texts.add(text)
+
+    return list(texts)
 
 
 def show(pil_images, nrow=4, size=14, save_dir=None, show=True):
@@ -100,7 +185,7 @@ def show(pil_images, nrow=4, size=14, save_dir=None, show=True):
         plt.show()
 
 
-def self_reranking(
+def self_reranking_by_text(
         text,
         codebooks,
         tokenizer,
@@ -156,6 +241,95 @@ def self_reranking(
                 ))
             )
     return torch.cat(ppl_text), torch.cat(ppl_image)
+
+
+def self_reranking_by_image(
+        texts,
+        pil_img,
+        tokenizer,
+        model,
+        vae,
+        bs=64,
+        seed=42,
+):
+    if seed is not None:
+        utils.seed_everything(seed)
+
+    vocab_size = model.get_param('vocab_size')
+    l_text_seq_length = model.get_param('l_text_seq_length')
+    r_text_seq_length = model.get_param('r_text_seq_length')
+    image_seq_length = model.get_param('image_seq_length')
+    image_tokens_per_dim = model.get_param('image_tokens_per_dim')
+    device = model.get_param('device')
+
+    image_transform = T.Compose([
+        T.Lambda(lambda img: img.convert('RGB') if img.mode != 'RGB' else img),
+        T.RandomResizedCrop(image_tokens_per_dim * 8,
+                            scale=(1., 1.),
+                            ratio=(1., 1.)),
+        T.ToTensor()
+    ])
+
+    img = image_transform(pil_img)
+
+    ppl_text, ppl_image = [], []
+    for chunk in more_itertools.chunked(texts, bs):
+        chunk_bs = len(chunk)
+        with torch.no_grad():
+            chunk_encoded, masks = [], []
+            for text in chunk:
+                text = text.lower().strip()
+                encoded = tokenizer.encode_text(text, text_seq_length=r_text_seq_length)
+                mask = torch.zeros(r_text_seq_length, dtype=torch.int64)
+                mask[encoded != 0] = 1
+                chunk_encoded.append(encoded)
+                masks.append(mask)
+
+            chunk_encoded = torch.stack(chunk_encoded)
+            masks = torch.stack(masks)
+
+            attention_mask = get_i2t_attention_mask(
+                masks.to(device),
+                chunk_bs, l_text_seq_length, image_tokens_per_dim, r_text_seq_length, device
+            )
+
+            images = img.unsqueeze(0).repeat((chunk_bs, 1, 1, 1)).to(device)
+            image_input_ids = vae.get_codebook_indices(images)
+
+            input_ids = torch.cat((
+                chunk_encoded.to(device),
+                image_input_ids,
+                chunk_encoded.to(device),
+            ), dim=1)
+
+            logits, _ = model(input_ids, attention_mask, has_cache=False, use_cache=False, return_loss=False)
+            logits = rearrange(logits, 'b n c -> b c n')
+
+            image_logits = logits[:, vocab_size:,
+                                  l_text_seq_length:l_text_seq_length + image_seq_length - 1].contiguous().float()
+            l_text_logits = logits[:, :vocab_size, :l_text_seq_length - 1].contiguous().float()
+            input_ids = input_ids.contiguous().long()
+
+            ppl_image.append(
+                ce_to_ppl(F.cross_entropy(
+                    image_logits,
+                    input_ids[:, l_text_seq_length + 1:l_text_seq_length + image_seq_length],
+                    reduction='none',
+                ))
+            )
+
+            ppl_text.append(
+                ce_to_ppl(F.cross_entropy(
+                    l_text_logits,
+                    input_ids[:, 1:l_text_seq_length],
+                    ignore_index=0,
+                    reduction='none',
+                ))
+            )
+
+    ppl_text = torch.cat(ppl_text)
+    ppl_image = torch.cat(ppl_image)
+    return ppl_text, ppl_image
 
 
 def zs_clf(pil_img, classes, model, tokenizer, vae, template=''):
