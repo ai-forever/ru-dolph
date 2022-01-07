@@ -200,6 +200,7 @@ for i, bs4_url in enumerate(bs4_urls):
 ```
 ![](./pics/pipelines/zs_clf.png)
 
+### Linear Probe (TODO, see Colab)
 
 # Authors: 
 
