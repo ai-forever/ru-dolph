@@ -32,6 +32,7 @@ from rudalle.image_prompts import ImagePrompts
 
 from rudolph.model import get_rudolph_model
 from rudolph.pipelines import zs_clf, generate_codebooks, self_reranking_by_image, self_reranking_by_text, show, generate_captions, generate_texts
+from rudolph import utils
 
 device = 'cuda'
 model = get_rudolph_model('350M', fp16=True, device=device)
@@ -69,7 +70,7 @@ for top_k, top_p, images_num in [
     (1024, 0.99, images_num),
     (1024, 0.98, images_num),
 ]:
-    codebooks.append(generate_codebooks(text, tokenizer, model, top_k=top_k, images_num=images_num, top_p=top_p, bs=128))
+    codebooks.append(generate_codebooks(text, tokenizer, model, top_k=top_k, images_num=images_num, top_p=top_p, bs=32))
 
 codebooks = torch.cat(codebooks)
 
