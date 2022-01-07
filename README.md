@@ -4,7 +4,13 @@
 
 *One Hyper-Modal Transformer can be creative as DALL-E and smart as CLIP*
 
-**Ru**ssian **D**iffusion **O**n **L**anguage **P**icture **H**yper-modality (RuDOLPH) Transformer
+**Ru**ssian **D**iffusion **O**n **L**anguage **P**icture **H**yper-modality (RuDOLPH) is a fast 
+and light text-image-text transformer (350M GPT-3) designed for a quick and easy fine-tuning setup 
+for the solution of various tasks: from generating images by text description and image classification 
+to visual question answering and more. This model demonstrates the power of Hyper-modality Transformers.
+
+*(!!!) Hyper-modality means generalized multi-modal, e.g., model that consists of two multi-modal parts: text-2-image and image-2-text becomes text and image hyper-modality model*
+
 
 ![](./pics/scheme.png)
 
