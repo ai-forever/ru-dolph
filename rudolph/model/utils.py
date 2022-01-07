@@ -62,3 +62,10 @@ def get_i2t_attention_mask(masks, bs, l_text_tokens, image_tokens_per_dim, r_tex
         if index:
             attention_mask[i, 0, l_text_tokens + image_tokens_per_dim * image_tokens_per_dim + index:, :] = 0
     return attention_mask
+
+
+def get_t2t_attention_mask(bs, l_text_tokens, image_tokens_per_dim, r_text_tokens, device):
+    total_seq_length = l_text_tokens + image_tokens_per_dim*image_tokens_per_dim + r_text_tokens
+    attention_mask = torch.tril(torch.ones((bs, 1, total_seq_length, total_seq_length), device=device))
+    attention_mask[:, :, l_text_tokens:, :] = 0
+    return attention_mask
