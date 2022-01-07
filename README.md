@@ -22,7 +22,7 @@ pip install rudalle==0.4.0
 ```
 
 # Usage
-**Init models**
+### Init models
 ```python
 from rudalle import get_tokenizer, get_vae
 from rudalle.utils import seed_everything
@@ -37,7 +37,7 @@ model.to(device);
 tokenizer = get_tokenizer()
 vae = get_vae(dwt=False).to(device)
 ```
-**Text Generation** 
+### Text Generation
 ```python
 generate_texts(
     tokenizer,
@@ -56,7 +56,7 @@ generate_texts(
  {'text': 'красивый пейзаж с видом на горы в таиланде', 'ppl': 219.86}]
 ```
 
-**Image Generation + Self Reranking** 
+### Image Generation + Self Reranking
 ```python
 text = 'красивый пейзаж с озером и лесом на заднем плане'
 images_num = 256
