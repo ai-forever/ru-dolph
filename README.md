@@ -163,8 +163,8 @@ show(pil_images, 8)
 ### Image Captioning + Self Reranking
 
 ```python
-texts = generate_captions(pil_img, tokenizer, model, vae, template='на картинке ', top_k=8, captions_num=128, bs=128, top_p=0.6, seed=42)
-ppl_text, ppl_image = self_reranking_by_image(texts, pil_img, tokenizer, model, vae, bs=16, seed=42)
+texts = generate_captions(pil_img, tokenizer, model, vae, template='на картинке ', top_k=8, captions_num=128, bs=32, top_p=0.6, seed=42)
+ppl_text, ppl_image = self_reranking_by_image(texts, pil_img, tokenizer, model, vae, bs=32, seed=42)
 for idx in ppl_image.argsort()[:8]:
     print(f'-{texts[idx]}')
 ```
