@@ -146,7 +146,7 @@ show(pil_images, 8)
 
 ### Diffusion (TODO, see Colab)
 
-### Image Captioning
+### Image Captioning + Self Reranking
 ![](./pics/pipelines/final_lake_ship.png)
 ```python
 texts = generate_captions(pil_img, tokenizer, model, vae, template='на картинке ', top_k=8, captions_num=128, bs=128, top_p=0.6, seed=42)
