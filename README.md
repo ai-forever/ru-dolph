@@ -70,6 +70,22 @@ generate_texts(
  {'text': 'красивый пейзаж с видом на горы в таиланде', 'ppl': 219.86}]
 ```
 
+### Setup for Fast Image Generation
+
+```python
+text = 'рисунок кота'
+bs, images_num = 48, 48
+top_k, top_p = 512, 0.9
+with torch.no_grad():
+    codebooks = generate_codebooks(text, tokenizer, model, top_k=top_k, images_num=images_num, top_p=top_p, bs=bs)
+    ppl_text, ppl_image = self_reranking_by_text(prompt, codebooks, tokenizer, model, bs=bs)
+    images = vae.decode(codebooks[ppl_text.argsort()[:4]])
+images = torchvision.utils.make_grid(images, nrow=2)
+img = torchvision.transforms.functional.to_pil_image(images)
+img
+```
+![](./pics/pipelines/cat_drawing.png)
+
 ### Image Generation + Self Reranking
 ```python
 text = 'красивый пейзаж с озером и лесом на заднем плане'
