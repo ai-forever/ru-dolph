@@ -78,7 +78,7 @@ bs, images_num = 48, 48
 top_k, top_p = 512, 0.9
 with torch.no_grad():
     codebooks = generate_codebooks(text, tokenizer, model, top_k=top_k, images_num=images_num, top_p=top_p, bs=bs)
-    ppl_text, ppl_image = self_reranking_by_text(prompt, codebooks, tokenizer, model, bs=bs)
+    ppl_text, ppl_image = self_reranking_by_text(text, codebooks, tokenizer, model, bs=bs)
     images = vae.decode(codebooks[ppl_text.argsort()[:4]])
 images = torchvision.utils.make_grid(images, nrow=2)
 img = torchvision.transforms.functional.to_pil_image(images)
