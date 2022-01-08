@@ -1,4 +1,4 @@
-rudalle==0.4.0
+rudalle==0.5.0rc1
 taming-transformers==0.0.1
 more_itertools~=8.10.0
 transformers~=4.10.2
