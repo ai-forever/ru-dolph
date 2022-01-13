@@ -1,6 +1,8 @@
 [[Paper]]() [[Хабр]]() [[Model Card]](https://huggingface.co/sberbank-ai/RuDOLPH-350M) [[Colab]](https://colab.research.google.com/drive/1gmTDA13u709OXiAeXWGm7sPixRhEJCga?usp=sharing) [[Kaggle]]()
-[[Finetuning for image2text example]](https://colab.research.google.com/drive/12YRRzhl5cHER_U2F-buQxif8GlhMPWq3?usp=sharing)
 
+
+[[Finetuning for image2text task]](https://colab.research.google.com/drive/12YRRzhl5cHER_U2F-buQxif8GlhMPWq3?usp=sharing)
+[[Finetuning for text2image tast]](https://colab.research.google.com/drive/1ZnJBUYD44qPTcjiOjKf3novg9wrdhTUE?usp=sharing)
 ## <img src="https://raw.githubusercontent.com/sberbank-ai/ru-dolph/master/pics/rudolph.png?token=GHSAT0AAAAAABQH6MST7ZEGAF274DV33K7KYOYRSBQ" height="60"/> RuDOLPH 🦌🎄☃️
 
 *One Hyper-Modal Transformer can be creative as DALL-E and smart as CLIP*
