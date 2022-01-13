@@ -2,6 +2,7 @@
 
 
 [[Finetuning for image2text task]](https://colab.research.google.com/drive/12YRRzhl5cHER_U2F-buQxif8GlhMPWq3?usp=sharing)
+
 [[Finetuning for text2image tast]](https://colab.research.google.com/drive/1ZnJBUYD44qPTcjiOjKf3novg9wrdhTUE?usp=sharing)
 ## <img src="https://raw.githubusercontent.com/sberbank-ai/ru-dolph/master/pics/rudolph.png?token=GHSAT0AAAAAABQH6MST7ZEGAF274DV33K7KYOYRSBQ" height="60"/> RuDOLPH 🦌🎄☃️
 
