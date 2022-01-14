@@ -54,10 +54,9 @@ def init_method_normal(std=0.02):
     return init_
 
 
-def get_i2t_attention_mask(masks, bs, l_text_tokens, image_tokens_per_dim, r_text_tokens, device):
+def get_attention_mask(masks, bs, l_text_tokens, image_tokens_per_dim, r_text_tokens, device):
     total_seq_length = l_text_tokens + image_tokens_per_dim*image_tokens_per_dim + r_text_tokens
     attention_mask = torch.tril(torch.ones((bs, 1, total_seq_length, total_seq_length), device=device))
-    attention_mask[:, :, :, :l_text_tokens] = 0
     for i, index in enumerate(torch.argmin(masks, 1)):
         if index:
             attention_mask[i, 0, l_text_tokens + image_tokens_per_dim * image_tokens_per_dim + index:, :] = 0

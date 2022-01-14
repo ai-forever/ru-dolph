@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 from einops import rearrange
 
 from . import utils
-from .model.utils import get_i2t_attention_mask, get_t2t_attention_mask
+from .model.utils import get_attention_mask, get_t2t_attention_mask
 
 
 def generate_codebooks(
@@ -112,8 +112,8 @@ def generate_captions(
         chunk_bs = len(chunk)
         with torch.no_grad():
             masks = torch.ones(chunk_bs, r_text_seq_length, dtype=torch.int32)
-            attention_mask = get_i2t_attention_mask(masks, chunk_bs, l_text_seq_length, image_tokens_per_dim,
-                                                    r_text_seq_length, device)
+            attention_mask = get_attention_mask(masks, chunk_bs, l_text_seq_length, image_tokens_per_dim,
+                                                r_text_seq_length, device)
 
             images = img.unsqueeze(0).repeat((chunk_bs, 1, 1, 1)).to(device)
             image_input_ids = vae.get_codebook_indices(images)
@@ -209,7 +209,7 @@ def self_reranking_by_text(
     for chunk in more_itertools.chunked(codebooks, bs):
         chunk_bs = len(chunk)
         with torch.no_grad():
-            attention_mask = get_i2t_attention_mask(
+            attention_mask = get_attention_mask(
                 mask.unsqueeze(0).repeat(chunk_bs, 1).to(device),
                 chunk_bs, l_text_seq_length, image_tokens_per_dim, r_text_seq_length, device
             )
@@ -290,7 +290,7 @@ def self_reranking_by_image(
             chunk_encoded = torch.stack(chunk_encoded)
             masks = torch.stack(masks)
 
-            attention_mask = get_i2t_attention_mask(
+            attention_mask = get_attention_mask(
                 masks.to(device),
                 chunk_bs, l_text_seq_length, image_tokens_per_dim, r_text_seq_length, device
             )
@@ -334,16 +334,16 @@ def self_reranking_by_image(
     return ppl_text, ppl_image
 
 
-def zs_clf(pil_img, classes, model, tokenizer, vae, template=''):
+def zs_clf(pil_img, classes, model, tokenizer, vae, bs=8, template=None):
     """
     classes - list of strings
     template - prefix template
     """
+    template = template or '{}'
     vocab_size = model.get_param('vocab_size')
     image_tokens_per_dim = model.get_param('image_tokens_per_dim')
     l_text_seq_length = model.get_param('l_text_seq_length')
     r_text_seq_length = model.get_param('r_text_seq_length')
-    image_seq_length = model.get_param('image_seq_length')
     device = model.get_param('device')
 
     image_transform = T.Compose([
@@ -354,19 +354,11 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, template=''):
         T.ToTensor()
     ])
 
-    template = template.lower().strip()
-    template_encoded = tokenizer.encode_text(template, text_seq_length=r_text_seq_length)
-    template_size = (template_encoded != 0).sum() - 2  # bos, eos
-    template_encoded = template_encoded[:template_size + 1]
-
     encoded, masks = [], []
     for _class in classes:
-        _class = _class.lower().strip()
-        class_encoded = tokenizer.encode_text(f' {_class}', text_seq_length=r_text_seq_length)
-        if template_size:
-            class_encoded = torch.cat([template_encoded, class_encoded[1:-template_size]])
+        text = template.format(_class).lower().strip()
+        class_encoded = tokenizer.encode_text(text, text_seq_length=r_text_seq_length)
         encoded.append(class_encoded)
-
         mask = torch.zeros(r_text_seq_length, dtype=torch.int64)
         mask[class_encoded != 0] = 1
         masks.append(mask)
@@ -374,48 +366,48 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, template=''):
     encoded = torch.stack(encoded, 0)
     masks = torch.stack(masks, 0)
 
-    bs = len(classes)
-
     with torch.no_grad():
-        attention_mask = get_i2t_attention_mask(masks, bs, l_text_seq_length, image_tokens_per_dim, r_text_seq_length,
-                                                device)
         img = image_transform(pil_img)
         images = img.unsqueeze(0).to(device)
         image_input_ids = vae.get_codebook_indices(images)
 
-        input_ids = torch.cat((
-            torch.zeros(l_text_seq_length, dtype=torch.int64).repeat(bs, 1).to(device),
-            image_input_ids.repeat(bs, 1),
-            encoded.to(device),
-        ), dim=1)
+        ppl_text, ppl_image = [], []  # noqa
+        for indexes in more_itertools.chunked(range(len(classes)), bs):
+            chunk_encoded = encoded[indexes]
+            chunk_masks = masks[indexes]
+            chunk_bs = chunk_encoded.shape[0]
 
-        logits, _ = model(input_ids, attention_mask, has_cache=False, use_cache=False, return_loss=False)
-        logits = rearrange(logits, 'b n c -> b c n')
+            attention_mask = get_attention_mask(chunk_masks, chunk_bs, l_text_seq_length,
+                                                image_tokens_per_dim, r_text_seq_length, device)
 
-        image_logits = logits[:, vocab_size:,
-                              l_text_seq_length:l_text_seq_length + image_seq_length - 1].contiguous()
-        r_text_logits = logits[:, :vocab_size, -r_text_seq_length:-1].contiguous()
+            input_ids = torch.cat((
+                torch.zeros(l_text_seq_length, dtype=torch.int64).repeat(chunk_bs, 1).to(device),
+                image_input_ids.repeat(chunk_bs, 1),
+                chunk_encoded.to(device),
+            ), dim=1)
 
-        ppl_text = ce_to_ppl(F.cross_entropy(
-            r_text_logits[:, :, template_size:],
-            input_ids[:, -(r_text_seq_length - 1 - template_size):],
-            ignore_index=0,
-            reduction='none',
-        ))
+            logits, _ = model(input_ids, attention_mask, has_cache=False, use_cache=False, return_loss=False)
+            logits = rearrange(logits, 'b n c -> b c n')
 
-        ppl_image = ce_to_ppl(F.cross_entropy(
-            image_logits,
-            input_ids[:, l_text_seq_length + 1:l_text_seq_length + image_seq_length],
-            reduction='none',
-        ))
+            r_text_logits = logits[:, :vocab_size, -r_text_seq_length:-1].contiguous()
 
-        pred = ppl_text.argmin().item()
+            chunk_ppl_text = ce_to_ppl(F.cross_entropy(
+                r_text_logits[:, :, :],
+                input_ids[:, -(r_text_seq_length - 1):],
+                ignore_index=0,
+                reduction='none',
+            ))
+            ppl_text.append(chunk_ppl_text)
+
+        ppl_text = torch.cat(ppl_text)
+        ppl_text = ppl_text / ppl_text.norm(dim=0, keepdim=True)
+        scores = ppl_text.softmax(0)
+        pred = scores.argmin().item()
 
     return {
         'label': pred,
         'class': classes[pred],
-        'ppl_text': ppl_text.cpu().numpy(),
-        'ppl_image': ppl_image.cpu().numpy(),
+        'scores': scores.cpu().numpy(),
     }
 
 
