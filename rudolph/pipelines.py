@@ -148,7 +148,7 @@ def generate_captions(
     texts = set()
     for tokens in generated_tokens:
         end = torch.where(tokens == 3)[0].shape[0] or tokens.shape[0]
-        text = tokenizer.decode_text(tokens[:end]).strip()
+        text = tokenizer.decode_text(tokens[:end+1]).strip()
         if text:
             texts.add(text)
 
