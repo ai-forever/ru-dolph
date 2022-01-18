@@ -81,6 +81,7 @@ def generate_captions(
         top_k=32, top_p=0.6, captions_num=128,
         temperature=1.0, bs=64,
         seed=None, use_cache=True,
+        limit_eos=True,
 ):
     if seed is None:
         seed = int((datetime.utcnow().timestamp() * 10 ** 6) % (2 ** 32 - 1))
@@ -147,8 +148,10 @@ def generate_captions(
 
     texts = set()
     for tokens in generated_tokens:
-        end = torch.where(tokens == 3)[0].shape[0] or tokens.shape[0]
-        text = tokenizer.decode_text(tokens[:end+1]).strip()
+        if limit_eos:
+            end = torch.where(tokens == 3)[0].shape[0] or tokens.shape[0]
+            tokens = tokens[:end+1]
+        text = tokenizer.decode_text(tokens).strip()
         if text:
             texts.add(text)
 

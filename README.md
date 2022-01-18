@@ -31,7 +31,7 @@ to visual question answering and more. This model demonstrates the power of Hype
 
 # Installing
 ```
-pip install rudolph==0.0.1rc3
+pip install rudolph==0.0.1rc4
 ```
 
 # Usage
