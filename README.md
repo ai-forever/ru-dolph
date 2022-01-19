@@ -1,7 +1,5 @@
 [[Paper]]() [[Хабр]]() [[Model Card]](https://huggingface.co/sberbank-ai/RuDOLPH-350M) [[Colab]](https://colab.research.google.com/drive/1gmTDA13u709OXiAeXWGm7sPixRhEJCga?usp=sharing) [[Kaggle]]()
 
-Fine-Tuning example by [@Alex Wortega](https://github.com/AlexWortega) 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/12YRRzhl5cHER_U2F-buQxif8GlhMPWq3?usp=sharing)
 
 ## <img src="https://raw.githubusercontent.com/sberbank-ai/ru-dolph/master/pics/rudolph.png?token=GHSAT0AAAAAABQH6MST7ZEGAF274DV33K7KYOYRSBQ" height="60"/> RuDOLPH 🦌🎄☃️
 
@@ -38,6 +36,10 @@ pip install rudolph==0.0.1rc1
 ```
 
 # Usage
+
+Fine-Tuning example by [@Alex Wortega](https://github.com/AlexWortega) 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/12YRRzhl5cHER_U2F-buQxif8GlhMPWq3?usp=sharing)
+
 ### Init models
 ```python
 from rudalle import get_tokenizer, get_vae
