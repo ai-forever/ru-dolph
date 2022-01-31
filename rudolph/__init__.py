@@ -8,4 +8,4 @@ __all__ = [
     'model',
 ]
 
-__version__ = '0.0.1rc6'
+__version__ = '0.0.1rc7'
