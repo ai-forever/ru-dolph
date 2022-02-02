@@ -31,7 +31,7 @@ def generate_codebooks(
     # TODO docstring
     if seed is not None:
         utils.seed_everything(seed)
-    else:
+    elif seed is not False:
         seed = int((datetime.utcnow().timestamp() * 10 ** 6) % (2 ** 32 - 1))
         utils.seed_everything(seed)
 

@@ -5,7 +5,6 @@ import torch
 def _init_mask(l_text_tokens, image_tokens_per_dim, r_text_tokens, is_bool_mask=False):
     attn_size = l_text_tokens + image_tokens_per_dim**2 + r_text_tokens
     mask = torch.tril(torch.ones(attn_size, attn_size, dtype=torch.bool if is_bool_mask else torch.float32))
-    mask[-r_text_tokens:, :l_text_tokens] = 0
     return mask
 
 
