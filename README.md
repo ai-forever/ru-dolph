@@ -60,7 +60,7 @@ vae = get_vae(dwt=False).to(device)
 ### Setup for Fast Image Generation
 
 ```python
-text = 'кресло в форме авокадо'
+text = 'старинный будильник многоугольной формы'
 bs, images_num = 48, 48
 top_k, top_p = 512, 0.9
 with torch.no_grad():
@@ -71,7 +71,7 @@ images = torchvision.utils.make_grid(images, nrow=2)
 img = torchvision.transforms.functional.to_pil_image(images)
 img
 ```
-![](./pics/pipelines/avocado_shaped_chair.png)
+![](./pics/pipelines/example.png)
 
 
 ### Text Generation
