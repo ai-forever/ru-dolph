@@ -50,7 +50,7 @@ def generate_codebooks(
         with torch.no_grad():
             attention_mask = torch.tril(torch.ones((chunk_bs, 1, total_seq_length, total_seq_length), device=device))
             out = encoded.unsqueeze(0).repeat(chunk_bs, 1).to(device)
-            has_cache = False
+            cache = None
             if image_prompts is not None:
                 prompts_idx, prompts = image_prompts.image_prompts_idx, image_prompts.image_prompts
                 prompts = prompts.repeat(chunk_bs, 1)
@@ -59,8 +59,7 @@ def generate_codebooks(
                 if image_prompts is not None and idx in prompts_idx:
                     out = torch.cat((out, prompts[:, idx].unsqueeze(1)), dim=-1)
                 else:
-                    logits, has_cache = model(out, attention_mask,
-                                              has_cache=has_cache, use_cache=use_cache, return_loss=False)
+                    logits, cache = model(out, attention_mask, cache=cache, use_cache=use_cache, return_loss=False)
                     logits = logits[:, -1, vocab_size:]
                     logits /= temperature
                     filtered_logits = transformers.top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
@@ -125,13 +124,12 @@ def generate_captions(
                 template_encoded.repeat(chunk_bs, 1).to(device),
             ), dim=1)
 
-            has_cache = False
+            cache = None
             for _ in tqdm(range(
                     l_text_seq_length + image_seq_length + template_size,
                     l_text_seq_length + image_seq_length + r_text_seq_length
             )):
-                logits, has_cache = model(out, attention_mask,
-                                          has_cache=has_cache, use_cache=use_cache, return_loss=False)
+                logits, cache = model(out, attention_mask, cache=cache, use_cache=use_cache, return_loss=False)
 
                 logits = logits[:, -1, :vocab_size]
                 logits /= temperature
@@ -222,7 +220,7 @@ def self_reranking_by_text(
                 encoded.unsqueeze(0).repeat(chunk_bs, 1).to(device),
             ), dim=1)
 
-            logits, _ = model(input_ids, attention_mask, has_cache=False, use_cache=False, return_loss=False)
+            logits, _ = model(input_ids, attention_mask, cache=None, use_cache=False, return_loss=False)
             logits = rearrange(logits, 'b n c -> b c n')
             image_logits = logits[:, vocab_size:,
                                   l_text_seq_length:l_text_seq_length + image_seq_length - 1].contiguous().float()
@@ -307,7 +305,7 @@ def self_reranking_by_image(
                 chunk_encoded.to(device),
             ), dim=1)
 
-            logits, _ = model(input_ids, attention_mask, has_cache=False, use_cache=False, return_loss=False)
+            logits, _ = model(input_ids, attention_mask, cache=None, use_cache=False, return_loss=False)
             logits = rearrange(logits, 'b n c -> b c n')
 
             image_logits = logits[:, vocab_size:,
@@ -389,7 +387,7 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, bs=8, template=None):
                 chunk_encoded.to(device),
             ), dim=1)
 
-            logits, _ = model(input_ids, attention_mask, has_cache=False, use_cache=False, return_loss=False)
+            logits, _ = model(input_ids, attention_mask, cache=None, use_cache=False, return_loss=False)
             logits = rearrange(logits, 'b n c -> b c n')
 
             r_text_logits = logits[:, :vocab_size, -r_text_seq_length:-1].contiguous()
@@ -444,11 +442,9 @@ def generate_texts(
             attention_mask = get_t2t_attention_mask(chunk_bs, l_text_seq_length, image_tokens_per_dim,
                                                     r_text_seq_length, device)
             out = template_encoded.repeat(chunk_bs, 1).to(device)
-            has_cache = False
+            cache = None
             for _ in tqdm(range(template_size, l_text_seq_length)):
-                logits, has_cache = model(out, attention_mask,
-                                          has_cache=has_cache, use_cache=use_cache, return_loss=False)
-
+                logits, cache = model(out, attention_mask, cache=cache, use_cache=use_cache, return_loss=False)
                 logits = logits[:, -1, :vocab_size]
                 logits /= temperature
                 filtered_logits = transformers.top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
@@ -485,7 +481,7 @@ def generate_texts(
             )
             input_ids = chunk_encoded.to(device)
 
-            logits, _ = model(input_ids, attention_mask, has_cache=False, use_cache=False, return_loss=False)
+            logits, _ = model(input_ids, attention_mask, cache=None, use_cache=False, return_loss=False)
             logits = rearrange(logits, 'b n c -> b c n')
 
             l_text_logits = logits[:, :vocab_size, :l_text_seq_length - 1].contiguous().float()

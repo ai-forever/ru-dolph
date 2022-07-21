@@ -25,8 +25,6 @@ class ruDolphModel(torch.nn.Module):
                  image_vocab_size=8192,
                  cogview_sandwich_layernorm=True,
                  cogview_pb_relax=True,
-                 cogview_layernorm_prescale=False,
-                 custom_relax=False,
                  is_bool_mask=True,
                  mlp_activation='gelu_jit',
                  gradient_checkpointing=None):
@@ -79,8 +77,6 @@ class ruDolphModel(torch.nn.Module):
             image_tokens_per_dim=image_tokens_per_dim,
             cogview_sandwich_layernorm=cogview_sandwich_layernorm,
             cogview_pb_relax=cogview_pb_relax,
-            cogview_layernorm_prescale=cogview_layernorm_prescale,
-            custom_relax=custom_relax,
             mlp_activation=mlp_activation,
             is_bool_mask=is_bool_mask,
         )
@@ -103,8 +99,8 @@ class ruDolphModel(torch.nn.Module):
         input_ids,
         attention_mask,
         return_loss=False,
-        has_cache=False,
         use_cache=False,
+        cache=None,
         lt_loss_weight=1,
         img_loss_weight=7,
         rt_loss_weight=1,
@@ -141,14 +137,14 @@ class ruDolphModel(torch.nn.Module):
         embeddings = embeddings * alpha + embeddings.detach() * (1 - alpha)
 
         attention_mask = attention_mask[:, :, :embeddings.shape[1], :embeddings.shape[1]]
-        transformer_output, present_has_cache, hidden_states = self.transformer(
-            embeddings, attention_mask, has_cache=has_cache, use_cache=use_cache,
+        transformer_output, present_cache, hidden_states = self.transformer(
+            embeddings, attention_mask, cache=cache, use_cache=use_cache,
             gradient_checkpointing=self.gradient_checkpointing
         )
 
         logits = self.to_logits(transformer_output)
         if return_loss is False:
-            outputs = (logits, present_has_cache)
+            outputs = (logits, present_cache)
             if return_hidden_states:
                 outputs += (hidden_states,)
             return outputs
