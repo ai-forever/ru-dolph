@@ -116,7 +116,7 @@ def generate_captions(
                                                 r_text_seq_length, device)
 
             images = img.unsqueeze(0).repeat((chunk_bs, 1, 1, 1)).to(device)
-            image_input_ids = vae.get_codebook_indices(images)
+            image_input_ids = vae.get_codebook_indices(images, disable_gumbel_softmax=True)
 
             out = torch.cat((
                 torch.zeros((chunk_bs, l_text_seq_length), dtype=torch.int64).to(device),
@@ -297,7 +297,7 @@ def self_reranking_by_image(
             )
 
             images = img.unsqueeze(0).repeat((chunk_bs, 1, 1, 1)).to(device)
-            image_input_ids = vae.get_codebook_indices(images)
+            image_input_ids = vae.get_codebook_indices(images, disable_gumbel_softmax=True)
 
             input_ids = torch.cat((
                 chunk_encoded.to(device),
@@ -370,7 +370,8 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, bs=8, template=None):
     with torch.no_grad():
         img = image_transform(pil_img)
         images = img.unsqueeze(0).to(device)
-        image_input_ids = vae.get_codebook_indices(images)
+        image_input_ids = vae.get_codebook_indices(images, disable_gumbel_softmax=True)
+        cache = None
 
         ppl_text, ppl_image = [], []  # noqa
         for indexes in more_itertools.chunked(range(len(classes)), bs):
@@ -387,7 +388,16 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, bs=8, template=None):
                 chunk_encoded.to(device),
             ), dim=1)
 
-            logits, _ = model(input_ids, attention_mask, cache=None, use_cache=False, return_loss=False)
+            if cache is not None:
+                cache = list(map(list, cache.values()))
+                for i, e in enumerate(cache):
+                    for j, c in enumerate(e):
+                        t = cache[i][j]
+                        t = t[..., :l_text_seq_length + image_tokens_per_dim, :]
+                        cache[i][j] = t
+                cache = dict(zip(range(len(cache)), cache))
+
+            logits, cache = model(input_ids, attention_mask, cache=cache, use_cache=True, return_loss=False)
             logits = rearrange(logits, 'b n c -> b c n')
 
             r_text_logits = logits[:, :vocab_size, -r_text_seq_length:-1].contiguous()
