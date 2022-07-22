@@ -45,11 +45,11 @@ class ruDolphModel(torch.nn.Module):
         self.l_text_seq_length = l_text_seq_length
         self.r_text_seq_length = r_text_seq_length
         self.total_seq_length = self.l_text_seq_length + self.image_seq_length + self.r_text_seq_length
-        self.total_vocab_size = vocab_size + image_vocab_size
         self.text_special_tokens = text_special_tokens
         self.image_special_tokens = image_special_tokens
         vocab_size = vocab_size + text_special_tokens
         image_vocab_size = image_vocab_size + image_special_tokens
+        self.total_vocab_size = vocab_size + image_vocab_size
         self.vocab_size = vocab_size
         self.gradient_checkpointing = gradient_checkpointing
         self.kernel_size = kernel_size
