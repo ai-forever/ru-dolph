@@ -23,11 +23,21 @@ class ruDolphModel(torch.nn.Module):
                  last_kernel_size=9,
                  image_tokens_per_dim=16,
                  image_vocab_size=8192,
+                 text_special_tokens=0,
+                 image_special_tokens=0,
                  cogview_sandwich_layernorm=True,
                  cogview_pb_relax=True,
                  is_bool_mask=True,
                  mlp_activation='gelu_jit',
                  gradient_checkpointing=None):
+        """
+        Special tokens 350m:
+            [text]: <text_vocab> (16384), <text_padding> (64), <text_special_tokens> (0) --> 16448
+            [image]: <image_vocab> (8192), <image_special_tokens> (0) --> 8192
+        Special tokens 2.7b:
+            [text]: <text_vocab> (16384), <text_padding> (384), <text_special_tokens> (1024) --> 17792
+            [image]: <image_vocab> (8192), <image_special_tokens> (1024) --> 9216
+        """
         super(ruDolphModel, self).__init__()
         self.device = device
         self.image_tokens_per_dim = image_tokens_per_dim
@@ -36,6 +46,10 @@ class ruDolphModel(torch.nn.Module):
         self.r_text_seq_length = r_text_seq_length
         self.total_seq_length = self.l_text_seq_length + self.image_seq_length + self.r_text_seq_length
         self.total_vocab_size = vocab_size + image_vocab_size
+        self.text_special_tokens = text_special_tokens
+        self.image_special_tokens = image_special_tokens
+        vocab_size = vocab_size + text_special_tokens
+        image_vocab_size = image_vocab_size + image_special_tokens
         self.vocab_size = vocab_size
         self.gradient_checkpointing = gradient_checkpointing
         self.kernel_size = kernel_size
@@ -109,7 +123,7 @@ class ruDolphModel(torch.nn.Module):
         device = input_ids.device
         l_text = input_ids[:, :self.l_text_seq_length]
         l_text_range = torch.arange(l_text.shape[1])
-        l_text_range += (self.vocab_size - self.l_text_seq_length)
+        l_text_range += (self.vocab_size - self.l_text_seq_length - self.text_special_tokens)
         l_text_range = l_text_range.to(device)
         l_text = torch.where(l_text == 0, l_text_range, l_text)
         l_text_pos = self.l_text_pos_embeddings(torch.arange(l_text.shape[1], device=device))
