@@ -393,7 +393,7 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, bs=8, template=None):
                 for i, e in enumerate(cache):
                     for j, c in enumerate(e):
                         t = cache[i][j]
-                        t = t[..., :l_text_seq_length + image_tokens_per_dim, :]
+                        t = t[..., :l_text_seq_length + image_tokens_per_dim*image_tokens_per_dim, :]
                         cache[i][j] = t
                 cache = dict(zip(range(len(cache)), cache))
 
