@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 from einops import rearrange
 
 from . import utils
-from .model.utils import get_attention_mask, get_t2t_attention_mask
+from .model.utils import get_attention_mask
 
 
 def generate_codebooks(
@@ -111,10 +111,8 @@ def generate_captions(
     for chunk in more_itertools.chunked(range(captions_num), bs):
         chunk_bs = len(chunk)
         with torch.no_grad():
-            masks = torch.ones(chunk_bs, r_text_seq_length, dtype=torch.int32)
-            attention_mask = get_attention_mask(masks, chunk_bs, l_text_seq_length, image_tokens_per_dim,
+            attention_mask = get_attention_mask(chunk_bs, l_text_seq_length, image_tokens_per_dim,
                                                 r_text_seq_length, device)
-
             images = img.unsqueeze(0).repeat((chunk_bs, 1, 1, 1)).to(device)
             image_input_ids = vae.get_codebook_indices(images, disable_gumbel_softmax=True)
 
@@ -201,17 +199,13 @@ def self_reranking_by_text(
     image_seq_length = model.get_param('image_seq_length')
     image_tokens_per_dim = model.get_param('image_tokens_per_dim')
     device = model.get_param('device')
-
     text = text.lower().strip()
     encoded = tokenizer.encode_text(text, text_seq_length=r_text_seq_length)
-    mask = torch.zeros(r_text_seq_length, dtype=torch.int64)
-    mask[encoded != 0] = 1
     ppl_text, ppl_image = [], []
     for chunk in more_itertools.chunked(codebooks, bs):
         chunk_bs = len(chunk)
         with torch.no_grad():
             attention_mask = get_attention_mask(
-                mask.unsqueeze(0).repeat(chunk_bs, 1).to(device),
                 chunk_bs, l_text_seq_length, image_tokens_per_dim, r_text_seq_length, device
             )
             input_ids = torch.cat((
@@ -279,20 +273,14 @@ def self_reranking_by_image(
     for chunk in more_itertools.chunked(texts, bs):
         chunk_bs = len(chunk)
         with torch.no_grad():
-            chunk_encoded, masks = [], []
+            chunk_encoded = []
             for text in chunk:
                 text = text.lower().strip()
                 encoded = tokenizer.encode_text(text, text_seq_length=r_text_seq_length)
-                mask = torch.zeros(r_text_seq_length, dtype=torch.int64)
-                mask[encoded != 0] = 1
                 chunk_encoded.append(encoded)
-                masks.append(mask)
 
             chunk_encoded = torch.stack(chunk_encoded)
-            masks = torch.stack(masks)
-
             attention_mask = get_attention_mask(
-                masks.to(device),
                 chunk_bs, l_text_seq_length, image_tokens_per_dim, r_text_seq_length, device
             )
 
@@ -355,17 +343,12 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, bs=8, template=None):
         T.ToTensor()
     ])
 
-    encoded, masks = [], []
+    encoded = []
     for _class in classes:
         text = template.format(_class).lower().strip()
         class_encoded = tokenizer.encode_text(text, text_seq_length=r_text_seq_length)
         encoded.append(class_encoded)
-        mask = torch.zeros(r_text_seq_length, dtype=torch.int64)
-        mask[class_encoded != 0] = 1
-        masks.append(mask)
-
     encoded = torch.stack(encoded, 0)
-    masks = torch.stack(masks, 0)
 
     with torch.no_grad():
         img = image_transform(pil_img)
@@ -376,10 +359,9 @@ def zs_clf(pil_img, classes, model, tokenizer, vae, bs=8, template=None):
         ppl_text, ppl_image = [], []  # noqa
         for indexes in more_itertools.chunked(range(len(classes)), bs):
             chunk_encoded = encoded[indexes]
-            chunk_masks = masks[indexes]
             chunk_bs = chunk_encoded.shape[0]
 
-            attention_mask = get_attention_mask(chunk_masks, chunk_bs, l_text_seq_length,
+            attention_mask = get_attention_mask(chunk_bs, l_text_seq_length,
                                                 image_tokens_per_dim, r_text_seq_length, device)
 
             input_ids = torch.cat((
@@ -449,8 +431,8 @@ def generate_texts(
     for chunk in more_itertools.chunked(range(texts_num), bs):
         chunk_bs = len(chunk)
         with torch.no_grad():
-            attention_mask = get_t2t_attention_mask(chunk_bs, l_text_seq_length, image_tokens_per_dim,
-                                                    r_text_seq_length, device)
+            attention_mask = get_attention_mask(chunk_bs, l_text_seq_length, image_tokens_per_dim,
+                                                r_text_seq_length, device)
             out = template_encoded.repeat(chunk_bs, 1).to(device)
             cache = None
             for _ in tqdm(range(template_size, l_text_seq_length)):
@@ -486,7 +468,7 @@ def generate_texts(
                 chunk_encoded.append(encoded)
 
             chunk_encoded = torch.stack(chunk_encoded)
-            attention_mask = get_t2t_attention_mask(
+            attention_mask = get_attention_mask(
                 chunk_bs, l_text_seq_length, image_tokens_per_dim, r_text_seq_length, device
             )
             input_ids = chunk_encoded.to(device)
