@@ -123,7 +123,7 @@ class ruDolphModel(torch.nn.Module):
         device = input_ids.device
         l_text = input_ids[:, :self.l_text_seq_length]
         l_text_range = torch.arange(l_text.shape[1])
-        l_text_range += (self.vocab_size - self.l_text_seq_length - self.text_special_tokens)
+        l_text_range += (self.vocab_size - self.l_text_seq_length)
         l_text_range = l_text_range.to(device)
         l_text = torch.where(l_text == 0, l_text_range, l_text)
         l_text_pos = self.l_text_pos_embeddings(torch.arange(l_text.shape[1], device=device))
@@ -170,9 +170,7 @@ class ruDolphModel(torch.nn.Module):
         labels = [l_text[:, 1:]]
         if use_image:
             labels.append(image_input_ids)
-            a, b = self.l_text_seq_length, self.l_text_seq_length + self.image_seq_length
-            if not use_r_text:
-                b -= 1
+            a, b = self.l_text_seq_length, self.l_text_seq_length + self.image_seq_length - 1
             image_logits = logits[:, self.vocab_size:, a:b].contiguous().float()
         if use_r_text:
             r_text_logits = logits[:, :self.vocab_size, -self.r_text_seq_length:-1].contiguous().float()
@@ -191,7 +189,7 @@ class ruDolphModel(torch.nn.Module):
         if use_image:
             loss_img = F.cross_entropy(
                 image_logits,
-                labels[:, self.l_text_seq_length:self.l_text_seq_length + self.image_seq_length]
+                labels[:, self.l_text_seq_length:self.l_text_seq_length + self.image_seq_length - 1]
             )
             loss_values['image_loss'] = loss_img.data.detach().float()
             if img_loss_weight:
