@@ -30,14 +30,6 @@ class ruDolphModel(torch.nn.Module):
                  is_bool_mask=True,
                  mlp_activation='gelu_jit',
                  gradient_checkpointing=None):
-        """
-        Special tokens 350m:
-            [text]: <text_vocab> (16384), <text_padding> (64), <text_special_tokens> (0) --> 16448
-            [image]: <image_vocab> (8192), <image_special_tokens> (0) --> 8192
-        Special tokens 2.7b:
-            [text]: <text_vocab> (16384), <text_padding> (384), <text_special_tokens> (1024) --> 17792
-            [image]: <image_vocab> (8192), <image_special_tokens> (1024) --> 9216
-        """
         super(ruDolphModel, self).__init__()
         self.device = device
         self.image_tokens_per_dim = image_tokens_per_dim
