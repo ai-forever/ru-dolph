@@ -80,13 +80,13 @@ class SparseTransformer(torch.nn.Module):
         conv_mask = get_conv_mask(
             l_text_seq_length,
             image_tokens_per_dim,
-            l_text_seq_length,
+            r_text_seq_length,
             is_bool_mask=is_bool_mask, kernel=kernel_size
         )
         last_conv_mask = get_conv_mask(
             l_text_seq_length,
             image_tokens_per_dim,
-            l_text_seq_length,
+            r_text_seq_length,
             is_bool_mask=is_bool_mask, kernel=last_kernel_size
         )
         self.register_buffer('row_mask', row_mask)
