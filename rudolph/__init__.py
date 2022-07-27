@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from . import pipelines, utils, model
+from . import api, utils, model
 
 
 __all__ = [
-    'pipelines',
+    'api',
     'utils',
     'model',
 ]
