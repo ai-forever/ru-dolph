@@ -35,7 +35,8 @@ class ruDolphApi:
 
     spc_id = -1
 
-    def __init__(self, model, tokenizer, vae, spc_tokens=None, quite=False, *, default_bs=48, default_q=0.5):
+    def __init__(self, model, tokenizer, vae, spc_tokens=None, quite=False, *, bs=24, q=0.5, txt_top_k=64,
+                 img_top_k=768, txt_top_p=0.8, img_top_p=0.99, txt_temperature=0.9, img_temperature=1.0):
         self.spc_tokens = spc_tokens or deepcopy(DEFAULT_SPC_TOKENS)
         self.model = model
         self.tokenizer = tokenizer
@@ -58,8 +59,14 @@ class ruDolphApi:
             T.ToTensor()
         ])
         ###
-        self.default_bs = default_bs
-        self.default_q = default_q
+        self.bs = bs
+        self.q = q
+        self.txt_top_k = txt_top_k
+        self.txt_top_p = txt_top_p
+        self.txt_temperature = txt_temperature
+        self.img_top_p = img_top_p
+        self.img_top_k = img_top_k
+        self.img_temperature = img_temperature
         self.ignore_ids = [
             self.tokenizer.eos_id, self.tokenizer.bos_id, self.tokenizer.unk_id, self.tokenizer.pad_id,
             self.spc_id, *list(self.spc_tokens.values())
@@ -88,8 +95,8 @@ class ruDolphApi:
                 })
         return pil_images, result
 
-    def image_captioning(self, pil_img, r_template='на картинке', early_stop=64, captions_num=8, seed=None, bs=None,
-                         generations_num=48, top_k=64, top_p=0.8, temperature=0.9, ppl_txt_w=0.05,
+    def image_captioning(self, pil_img, r_template='на картинке', early_stop=64, captions_num=5, seed=None, bs=None,
+                         generations_num=48, top_k=None, top_p=None, temperature=None, ppl_txt_w=0.05,
                          l_special_token='<LT_T2I>', r_special_token='<RT_I2T>'):
         texts, counts = self.generate_captions(
             pil_img, r_template=r_template, early_stop=early_stop, captions_num=generations_num,
@@ -111,10 +118,13 @@ class ruDolphApi:
             })
         return result
 
-    def generate_codebooks(self, text, images_num, image_prompts=None, top_k=768, top_p=0.99,
-                           temperature=1.0, bs=None, seed=None, use_cache=True, special_token='<LT_T2I>'):
+    def generate_codebooks(self, text, images_num, image_prompts=None, top_k=None, top_p=None,
+                           temperature=None, bs=None, seed=None, use_cache=True, special_token='<LT_T2I>'):
         torch.cuda.empty_cache()
-        bs = bs or self.default_bs
+        bs = bs or self.bs
+        top_k = top_k or self.img_top_k
+        top_p = top_p or self.img_top_p
+        temperature = temperature or self.img_temperature
         self.seed_everything(seed)
         text = text.lower().strip()
         encoded = self.encode_text(text, text_seq_length=self.l_text_seq_length)
@@ -156,7 +166,7 @@ class ruDolphApi:
                                l_special_token='<LT_I2T>', r_special_token='<RT_I2T>', ppl_txt_w=0.95):
 
         torch.cuda.empty_cache()
-        bs = bs or self.default_bs
+        bs = bs or self.bs
         self.seed_everything(seed)
         text = text.lower().strip()
         r_encoded = self.encode_text(text, text_seq_length=self.r_text_seq_length)
@@ -205,8 +215,8 @@ class ruDolphApi:
 
         ppl_txt = torch.cat(ppl_txt)
         ppl_img = torch.cat(ppl_img)
-        scores = (ppl_txt - ppl_txt.min()) / (ppl_txt.quantile(q=self.default_q) - ppl_txt.min()) * ppl_txt_w + \
-                 (ppl_img - ppl_img.min()) / (ppl_img.quantile(q=self.default_q) - ppl_img.min()) * (1 - ppl_txt_w)
+        scores = (ppl_txt - ppl_txt.min()) / (ppl_txt.quantile(q=self.q) - ppl_txt.min()) * ppl_txt_w + \
+                 (ppl_img - ppl_img.min()) / (ppl_img.quantile(q=self.q) - ppl_img.min()) * (1 - ppl_txt_w)
 
         return ppl_txt.cpu().numpy(), ppl_img.cpu().numpy(), scores.cpu().numpy()
 
@@ -280,13 +290,16 @@ class ruDolphApi:
 
     def generate_texts(
         self, template='',
-        top_k=32, top_p=0.8, texts_num=48,
+        top_k=None, top_p=None, texts_num=48,
         early_stop=None,
-        temperature=1.0, bs=None, seed=None, use_cache=True, special_token='<LT_T2T>',
+        temperature=None, bs=None, seed=None, use_cache=True, special_token='<LT_T2T>',
         allowed_token_ids=None,
     ):
         torch.cuda.empty_cache()
-        bs = bs or self.default_bs
+        bs = bs or self.bs
+        top_k = top_k or self.txt_top_k
+        top_p = top_p or self.txt_top_p
+        temperature = temperature or self.txt_temperature
         self.seed_everything(seed)
 
         early_stop = early_stop or self.l_text_seq_length
@@ -389,12 +402,15 @@ class ruDolphApi:
         return result
 
     def generate_captions(
-        self, pil_img, early_stop=None, top_k=32, top_p=0.6, captions_num=128,
-            temperature=0.8, bs=None, seed=None, use_cache=True,
+        self, pil_img, early_stop=None, top_k=None, top_p=None, captions_num=48,
+            temperature=None, bs=None, seed=None, use_cache=True,
             l_template='', r_template='', l_special_token='<LT_I2T>', r_special_token='<RT_I2T>',
     ):
         torch.cuda.empty_cache()
-        bs = bs or self.default_bs
+        bs = bs or self.bs
+        top_k = top_k or self.txt_top_k
+        top_p = top_p or self.txt_top_p
+        temperature = temperature or self.txt_temperature
         self.seed_everything(seed)
 
         early_stop = early_stop or self.r_text_seq_length
@@ -475,7 +491,7 @@ class ruDolphApi:
             ppl_txt_w=0.05,
     ):
         torch.cuda.empty_cache()
-        bs = bs or self.default_bs
+        bs = bs or self.bs
         self.seed_everything(seed)
 
         img = self.image_transform(pil_img)
@@ -535,17 +551,20 @@ class ruDolphApi:
 
         ppl_txt = torch.cat(ppl_txt)
         ppl_img = torch.cat(ppl_img)
-        scores = (ppl_txt - ppl_txt.min()) / (ppl_txt.quantile(q=self.default_q) - ppl_txt.min()) * ppl_txt_w + \
-                 (ppl_img - ppl_img.min()) / (ppl_img.quantile(q=self.default_q) - ppl_img.min()) * (1 - ppl_txt_w)
+        scores = (ppl_txt - ppl_txt.min()) / (ppl_txt.quantile(q=self.q) - ppl_txt.min()) * ppl_txt_w + \
+                 (ppl_img - ppl_img.min()) / (ppl_img.quantile(q=self.q) - ppl_img.min()) * (1 - ppl_txt_w)
 
         return ppl_txt.cpu().numpy(), ppl_img.cpu().numpy(), scores.cpu().numpy()
 
-    def generate_codebooks_CFG(self, text, images_num, template=None, image_prompts=None, top_k=768, top_p=0.99,
-                               late_softmax=False, temperature=1.0, bs=None, seed=None, use_cache=True, weight_CFG=0.2,
+    def generate_codebooks_cfg(self, text, images_num, template=None, image_prompts=None, top_k=None, top_p=None,
+                               late_softmax=False, temperature=None, bs=None, seed=None, use_cache=True, weight_cfg=0.2,
                                special_token='<LT_UNK>'):
         """ by @neverix """
         torch.cuda.empty_cache()
-        bs = bs or self.default_bs
+        bs = bs or self.bs
+        top_k = top_k or self.img_top_k
+        top_p = top_p or self.img_top_p
+        temperature = temperature or self.img_temperature
         self.seed_everything(seed)
         template = template or ''
 
@@ -557,7 +576,7 @@ class ruDolphApi:
         encoded_CFG[torch.where(encoded_CFG == self.spc_id)] = self.spc_tokens[special_token]
 
         encoded = torch.stack([encoded, encoded_CFG])
-        weights = [1-weight_CFG, weight_CFG]
+        weights = [1-weight_cfg, weight_cfg]
         bs //= len(weights)
         codebooks = []
         for chunk in more_itertools.chunked(range(images_num), bs):
@@ -599,7 +618,6 @@ class ruDolphApi:
                         out = torch.stack(
                             [torch.cat((out[i::len(weights)], sample), dim=-1) for i in range(len(weights))]
                         )
-
                         out = out.transpose(0, 1).reshape(-1, *out.shape[2:])
 
                 codebooks.append(
