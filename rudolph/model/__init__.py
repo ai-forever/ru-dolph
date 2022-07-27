@@ -42,6 +42,58 @@ MODELS = {
         authors='https://t.me/shonenkovAI',
         full_description='',  # TODO
     ),
+    '1.3B': dict(
+        description='',
+        model_params=dict(
+            num_layers=24,
+            hidden_size=2048,
+            num_attention_heads=16,
+            embedding_dropout_prob=0.1,
+            output_dropout_prob=0.1,
+            attention_dropout_prob=0.1,
+            l_text_seq_length=128,
+            image_tokens_per_dim=32,
+            r_text_seq_length=128,
+            kernel_size=9,
+            last_kernel_size=11,
+            cogview_sandwich_layernorm=True,
+            cogview_pb_relax=True,
+            text_special_tokens=2048,
+            image_special_tokens=64,
+            vocab_size=16384 + 128,
+            image_vocab_size=8192,
+        ),
+        repo_id='',
+        filename='pytorch_model.bin',
+        authors='',
+        full_description='',  # TODO
+    ),
+    '2.7B': dict(
+        description='',
+        model_params=dict(
+            num_layers=32,
+            hidden_size=2560,
+            num_attention_heads=32,
+            embedding_dropout_prob=0.1,
+            output_dropout_prob=0.1,
+            attention_dropout_prob=0.1,
+            l_text_seq_length=384,
+            image_tokens_per_dim=24,
+            r_text_seq_length=128,
+            kernel_size=7,
+            last_kernel_size=9,
+            cogview_sandwich_layernorm=True,
+            cogview_pb_relax=True,
+            text_special_tokens=1024,
+            image_special_tokens=1024,
+            vocab_size=16384 + 384,
+            image_vocab_size=8192,
+        ),
+        repo_id='',
+        filename='pytorch_model.bin',
+        authors='',
+        full_description='',  # TODO
+    ),
     '350M_v1': dict(
         description='Russian Diffusion On Language Picture Hyper-modality (RuDOLPH 🦌🎄☃️) 350M is a fast and light '
                     'text-image-text transformer (350M GPT-3) designed for a quick and easy fine-tuning setup '
