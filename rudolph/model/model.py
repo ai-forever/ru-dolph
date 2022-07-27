@@ -92,8 +92,11 @@ class ruDolphModel(torch.nn.Module):
 
     def get_image_pos_embeddings(self, image_input_ids, device, past_length=0):
         input_shape = image_input_ids.size()
-        row_ids = torch.arange(past_length, input_shape[-1] + past_length,
-                               dtype=torch.long, device=device) // self.image_tokens_per_dim
+        row_ids = torch.div(
+            torch.arange(past_length, input_shape[-1] + past_length, dtype=torch.long, device='cpu'),
+            self.image_tokens_per_dim,
+            rounding_mode='trunc'
+        )
         row_ids = row_ids.unsqueeze(0).view(-1, input_shape[-1])
         col_ids = torch.arange(past_length, input_shape[-1] + past_length,
                                dtype=torch.long, device=device) % self.image_tokens_per_dim
