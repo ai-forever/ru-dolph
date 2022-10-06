@@ -48,10 +48,6 @@ The following table shows the values of the parameters corresponding to differen
 
 ![](./pics/attention_masks_2700m.png)
 
-# Usage Examples
-
-![](./pics/high_res.png)
-
 # Installing
 ```
 pip install rudolph==0.0.1rc10
