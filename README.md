@@ -34,19 +34,19 @@ The following table shows the values of the parameters corresponding to differen
 
 `row - col - row - [last] conv`
 
-![](./pics/attention_masks.png)
+![](./pics/attention_masks_350m.png)
 
 ### 1.3B
 
 `row - col - row - [last] conv`
 
-![](./pics/rudolph_masks_13b.png)
+![](./pics/attention_masks_1300m.png)
 
 ### 2.7B
 
 `row - col - row - [last] conv`
 
-![](./pics/rudolph27b_masks.png)
+![](./pics/attention_masks_2700m.png)
 
 # Usage Examples
 
