@@ -23,10 +23,10 @@ class ruDolphModel(torch.nn.Module):
                  last_kernel_size=9,
                  image_tokens_per_dim=16,
                  image_vocab_size=8192,
+                 text_special_tokens=0,
+                 image_special_tokens=0,
                  cogview_sandwich_layernorm=True,
                  cogview_pb_relax=True,
-                 cogview_layernorm_prescale=False,
-                 custom_relax=False,
                  is_bool_mask=True,
                  mlp_activation='gelu_jit',
                  gradient_checkpointing=None):
@@ -37,6 +37,10 @@ class ruDolphModel(torch.nn.Module):
         self.l_text_seq_length = l_text_seq_length
         self.r_text_seq_length = r_text_seq_length
         self.total_seq_length = self.l_text_seq_length + self.image_seq_length + self.r_text_seq_length
+        self.text_special_tokens = text_special_tokens
+        self.image_special_tokens = image_special_tokens
+        vocab_size = vocab_size + text_special_tokens
+        image_vocab_size = image_vocab_size + image_special_tokens
         self.total_vocab_size = vocab_size + image_vocab_size
         self.vocab_size = vocab_size
         self.gradient_checkpointing = gradient_checkpointing
@@ -79,8 +83,6 @@ class ruDolphModel(torch.nn.Module):
             image_tokens_per_dim=image_tokens_per_dim,
             cogview_sandwich_layernorm=cogview_sandwich_layernorm,
             cogview_pb_relax=cogview_pb_relax,
-            cogview_layernorm_prescale=cogview_layernorm_prescale,
-            custom_relax=custom_relax,
             mlp_activation=mlp_activation,
             is_bool_mask=is_bool_mask,
         )
@@ -90,8 +92,11 @@ class ruDolphModel(torch.nn.Module):
 
     def get_image_pos_embeddings(self, image_input_ids, device, past_length=0):
         input_shape = image_input_ids.size()
-        row_ids = torch.arange(past_length, input_shape[-1] + past_length,
-                               dtype=torch.long, device=device) // self.image_tokens_per_dim
+        row_ids = torch.div(
+            torch.arange(past_length, input_shape[-1] + past_length, dtype=torch.long, device=self.device),
+            self.image_tokens_per_dim,
+            rounding_mode='trunc'
+        )
         row_ids = row_ids.unsqueeze(0).view(-1, input_shape[-1])
         col_ids = torch.arange(past_length, input_shape[-1] + past_length,
                                dtype=torch.long, device=device) % self.image_tokens_per_dim
@@ -103,8 +108,8 @@ class ruDolphModel(torch.nn.Module):
         input_ids,
         attention_mask,
         return_loss=False,
-        has_cache=False,
         use_cache=False,
+        cache=None,
         lt_loss_weight=1,
         img_loss_weight=7,
         rt_loss_weight=1,
@@ -141,14 +146,14 @@ class ruDolphModel(torch.nn.Module):
         embeddings = embeddings * alpha + embeddings.detach() * (1 - alpha)
 
         attention_mask = attention_mask[:, :, :embeddings.shape[1], :embeddings.shape[1]]
-        transformer_output, present_has_cache, hidden_states = self.transformer(
-            embeddings, attention_mask, has_cache=has_cache, use_cache=use_cache,
+        transformer_output, present_cache, hidden_states = self.transformer(
+            embeddings, attention_mask, cache=cache, use_cache=use_cache,
             gradient_checkpointing=self.gradient_checkpointing
         )
 
         logits = self.to_logits(transformer_output)
         if return_loss is False:
-            outputs = (logits, present_has_cache)
+            outputs = (logits, present_cache)
             if return_hidden_states:
                 outputs += (hidden_states,)
             return outputs
@@ -160,9 +165,7 @@ class ruDolphModel(torch.nn.Module):
         labels = [l_text[:, 1:]]
         if use_image:
             labels.append(image_input_ids)
-            a, b = self.l_text_seq_length, self.l_text_seq_length + self.image_seq_length
-            if not use_r_text:
-                b -= 1
+            a, b = self.l_text_seq_length, self.l_text_seq_length + self.image_seq_length - 1
             image_logits = logits[:, self.vocab_size:, a:b].contiguous().float()
         if use_r_text:
             r_text_logits = logits[:, :self.vocab_size, -self.r_text_seq_length:-1].contiguous().float()
@@ -181,7 +184,7 @@ class ruDolphModel(torch.nn.Module):
         if use_image:
             loss_img = F.cross_entropy(
                 image_logits,
-                labels[:, self.l_text_seq_length:self.l_text_seq_length + self.image_seq_length]
+                labels[:, self.l_text_seq_length:self.l_text_seq_length + self.image_seq_length - 1]
             )
             loss_values['image_loss'] = loss_img.data.detach().float()
             if img_loss_weight:

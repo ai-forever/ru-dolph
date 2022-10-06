@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-from . import pipelines, utils, model
+from . import api, utils, model
 
 
 __all__ = [
-    'pipelines',
+    'api',
     'utils',
     'model',
 ]
 
-__version__ = '0.0.1rc8'
+__version__ = '0.0.1rc10'
