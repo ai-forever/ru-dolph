@@ -9,7 +9,7 @@
 
 **RU**ssian **D**ecoder **O**n **L**anguage **P**icture **H**yper-tasking (**RUDOLPH**) is a text-image-text transformer designed for an easy fine-tuning for a range of tasks: from generating images by text description and image classification to visual question answering and more. This model demonstrates the power of Hyper-tasking Transformers.
 
-*Hyper-tasking means generalized multi-tasking, e.g., the model that can solve almost all tasks within supported modalities (two modalities in case of RUDOLPH: images and Russian texts).*
+*Hyper-tasking model is a generalized multi-tasking model, i.e., the model that can solve almost all tasks within supported modalities, mandatory including mutual pairwise translations between modalities (two modalities in case of RUDOLPH: images and Russian texts).*
 
 ![](./pics/scheme.jpg)
 
