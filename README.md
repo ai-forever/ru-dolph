@@ -40,13 +40,21 @@ The following table shows the values of the parameters corresponding to differen
 
 `row - col - row - [last] conv`
 
+<<<<<<< HEAD
 ![](./pics/attention_mask_1300m.png)
+=======
+![](./pics/attention_masks_1300m.png)
+>>>>>>> fba00f488a273f8d023fd9fc9bec692192bb2316
 
 ### 2.7B
 
 `row - col - row - [last] conv`
 
+<<<<<<< HEAD
 ![](./pics/attention_mask_2700m.png)
+=======
+![](./pics/attention_masks_2700m.png)
+>>>>>>> fba00f488a273f8d023fd9fc9bec692192bb2316
 
 # Usage Examples
 
