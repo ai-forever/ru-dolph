@@ -11,7 +11,7 @@
 
 *Hyper-tasking means generalized multi-tasking, e.g., the model that can solve almost all tasks within supported modalities (two modalities in case of RUDOLPH: images and Russian texts).*
 
-![](./pics/scheme.jpg)
+![](./pics/scheme.png)
 
 # Models
 + [350M (RUDOLPH)](https://huggingface.co/sberbank-ai/RUDOLPH-350M)
