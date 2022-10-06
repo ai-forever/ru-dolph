@@ -17,7 +17,7 @@
 + [350M (RUDOLPH)](https://huggingface.co/sberbank-ai/RUDOLPH-350M)
 + [1.3B (RUDOLPH)](https://huggingface.co/sberbank-ai/RUDOLPH-1.3B)
 + [2.7B (RUDOLPH)](https://huggingface.co/sberbank-ai/RUDOLPH-2.7B)
-+ [2.7B_fbc2 (RUDOLPH-fine-tuned)](https://huggingface.co/sberbank-ai/RUDOLPH-2.7B-FBC2)
++ [2.7B_FBC2 (RUDOLPH-fine-tuned)](https://huggingface.co/sberbank-ai/RUDOLPH-2.7B-FBC2)
 
 The following table shows the values of the parameters corresponding to different RUDOLPH versions.
 
