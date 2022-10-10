@@ -69,4 +69,4 @@ Usage and fine-tuning examples for different versions of RUDOLPH can be found in
 
 # Supported by
 
-[<img src="https://raw.githubusercontent.com/sberbank-ai/ru-dolph/master/pics/logo/airi-logo.png" height="50"/>](https://airi.net)
+[<img src="https://raw.githubusercontent.com/ai-forever/ru-dolph/master/pics/logo/AIRI_Full_logo.png" height="50"/>](https://airi.net)
