@@ -28,6 +28,23 @@ DEFAULT_SPC_TOKENS = {
     '<LT_I2T>': 16387,
     '<LT_T2T>': 16388,
     '<RT_I2T>': 16389,
+    
+    '<LT_TQA>': 16390,
+    '<RT_TQA>': 16391,
+    
+    '<LT_MQA>': 16392,
+    '<RT_MQA>': 16393,
+    
+    '<LT_VQA>': 16394,
+    '<RT_VQA>': 16395,
+    
+    '<LT_CAP>': 16396,
+    '<RT_CAP>': 16397,
+    
+    '<LT_GEN>': 16398,
+    
+    '<LT_REC>': 16399,
+    '<RT_REC>': 16400,
 }
 
 
@@ -35,7 +52,7 @@ class ruDolphApi:
 
     spc_id = -1
 
-    def __init__(self, model, tokenizer, vae, spc_tokens=None, quite=False, *, bs=24, q=0.5, txt_top_k=64,
+    def __init__(self, model, tokenizer, vae, spc_tokens=None, quiet=False, *, bs=24, q=0.5, txt_top_k=64,
                  img_top_k=768, txt_top_p=0.8, img_top_p=0.99, txt_temperature=0.9, img_temperature=1.0):
         self.spc_tokens = spc_tokens or deepcopy(DEFAULT_SPC_TOKENS)
         self.model = model
@@ -71,7 +88,7 @@ class ruDolphApi:
             self.tokenizer.eos_id, self.tokenizer.bos_id, self.tokenizer.unk_id, self.tokenizer.pad_id,
             self.spc_id, *list(self.spc_tokens.values())
         ]
-        self.quite = quite
+        self.quiet = quiet
 
     def dream(self, text, images_num, codebooks_num, image_prompts=None, template=None,
               top_k=768, top_p=0.99, temperature=1.0,
@@ -117,7 +134,141 @@ class ruDolphApi:
                 'ppl_img': ppl_img[idx],
             })
         return result
+    
+    def right_text_generation(self, pil_img, r_template='', l_template = '', early_stop=64, captions_num=5, seed=None, bs=None,
+                         generations_num=48, top_k=None, top_p=None, temperature=None, ppl_txt_w=0.05,
+                         l_special_token='<LT_UNK>', r_special_token='<RT_UNK>'):
+        
+        texts, counts = self.generate_captions(
+            pil_img, r_template=r_template, l_template = l_template, early_stop=early_stop, captions_num=generations_num,
+            bs=bs, top_k=top_k, top_p=top_p, temperature=temperature, seed=seed, l_special_token=l_special_token, r_special_token=r_special_token,
+        )
+        
+        ppl_txt, ppl_img, scores = self.self_reranking_by_image(
+            texts, pil_img,
+            bs=bs, seed=seed, l_special_token=l_special_token, ppl_txt_w=ppl_txt_w
+        )
+        scores = scores / counts
+        result = []
+        for idx in scores.argsort()[:captions_num]:
+            result.append({
+                'text': texts[idx],
+                'score': scores[idx],
+                'count': counts[idx],
+                'ppl_txt': ppl_txt[idx],
+                'ppl_img': ppl_img[idx],
+            })
+        return result
+    
+    def generate_image_text(self, text, template=None, image_prompts=None, 
+                            images_num = 1, codebooks_num = 1, top_k=768, top_p=0.99, temperature=1.0,
+                            bs=None, seed=None, use_cache=True, special_token='<LT_GEN>', ppl_txt_w=0.95):
+        
+        text = text.lower().strip()
+        template = template or '{text}'
+        codebooks = self.generate_codebooks(
+            text=template.format(text=text), images_num=codebooks_num, top_k=top_k, top_p=top_p, bs=bs, seed=seed,
+            temperature=temperature, use_cache=use_cache, special_token=special_token, image_prompts=image_prompts
+        )
+        ppl_txt, ppl_img, scores = self.self_reranking_by_text(text, codebooks, bs=bs, seed=seed, ppl_txt_w=ppl_txt_w)
+        result = []
+        with torch.no_grad():
+            indexes = scores.argsort()[:images_num]
+            images = self.vae.decode(codebooks[indexes])
+            pil_images = utils.torch_tensors_to_pil_list(images)
+            for idx in indexes:
+                result.append({
+                    'ppl_txt': ppl_txt[idx],
+                    'ppl_img': ppl_img[idx],
+                    'score': scores[idx],
+                })
+                
+        right_text = self.generate_text_answers(codebooks[indexes][0], template.format(text=text), top_k=32, top_p=0.8, special_token='<RT_UNK>')
+        return pil_images, result, right_text
+    
+    def generate_text_answers(self, image_tokens, left_text, top_k, top_p, temperature=1.0, use_cache=True, template='', allowed_token_ids=None, special_token_left='<LT_UNK>', special_token='<RT_UNK>', texts_num = 1):
+        '''
+            Generate right text tokens.
+        '''
+        self.model.eval()
+        torch.cuda.empty_cache()
+        generated_tokens = []
+        chunk_bs = texts_num
+        
+        # Кодируем левый текст
+        left_text = left_text.lower().strip()
+        left_text_encoded = self.encode_text(left_text, text_seq_length=self.l_text_seq_length)
+        left_text_encoded[torch.where(left_text_encoded == self.spc_id)] = self.spc_tokens[special_token_left]
 
+        # В случае если мы передаем какое либо унифицированное начало для всех ответов в правые текстовые токены
+        template = template.lower().strip()
+        template_encoded = self.encode_text(template, text_seq_length=self.r_text_seq_length)
+    
+        template_size = (template_encoded != 0).sum() - 1  # eos
+        
+        template_encoded = template_encoded[:template_size]
+        template_encoded[torch.where(template_encoded == self.spc_id)] = self.spc_tokens[special_token]
+        
+        #print('Decoded sequence', self.decode_text(template_encoded))
+        
+        with torch.no_grad():
+            attention_mask = self.get_attention_mask(chunk_bs)
+
+            out = torch.cat((
+                left_text_encoded.to(self.device),
+                image_tokens,
+                template_encoded.to(self.device),
+            ), dim=-1).unsqueeze(0)
+
+            cache = None
+            iter_range = range(
+                self.l_text_seq_length + self.image_seq_length + template_size, 
+                self.l_text_seq_length + self.image_seq_length + self.r_text_seq_length
+            )
+            
+            if not self.quiet:
+                iter_range = tqdm(iter_range)
+                
+            for _ in iter_range:  
+                logits, cache = self.model(out, attention_mask, cache=cache, use_cache=use_cache, return_loss=False)
+                
+                logits = logits[:, -1, :self.vocab_size]
+            
+                if allowed_token_ids:
+                    logits = logits[:, allowed_token_ids]
+            
+                logits /= temperature
+                filtered_logits = transformers.top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
+                probs = torch.nn.functional.softmax(filtered_logits, dim=-1)
+                sample = torch.multinomial(probs, 1)
+            
+                if allowed_token_ids:
+                        sample = torch.tensor(allowed_token_ids).to(self.device)[sample]
+            
+                indexes = torch.where(sample >= self.vocab_size - self.l_text_seq_length)
+                sample[indexes] = 3
+                out = torch.cat((out, sample), dim=-1)
+
+            generated_tokens.append(out[:, -self.r_text_seq_length:])
+
+        tokens = torch.cat(generated_tokens)[:,1:]
+
+        texts = []
+
+        for i in range(tokens.shape[0]):
+            end = torch.where(tokens[i] == 3)[0]
+            if (len(end) > 0):
+                end = end[0]
+            else:
+                end = tokens[i].shape[0]
+            
+            text = self.decode_text(tokens[i][:end+1]).strip()#end+1
+            if text:
+                texts.append(text)
+            else:
+                texts.append('пустая строка')
+        return texts
+    
     def generate_codebooks(self, text, images_num, image_prompts=None, top_k=None, top_p=None,
                            temperature=None, bs=None, seed=None, use_cache=True, special_token='<LT_T2I>'):
         torch.cuda.empty_cache()
@@ -141,7 +292,7 @@ class ruDolphApi:
                     prompts_idx, prompts = image_prompts.image_prompts_idx, image_prompts.image_prompts
                     prompts = prompts.repeat(chunk_bs, 1)
                 iter_range = range(self.l_text_seq_length, self.l_text_seq_length + self.image_seq_length)
-                if not self.quite:
+                if not self.quiet:
                     iter_range = tqdm(iter_range)
                 for idx in iter_range:
                     idx -= self.l_text_seq_length
@@ -307,7 +458,7 @@ class ruDolphApi:
         template = template.lower().strip()
         template_encoded = self.encode_text(template, text_seq_length=self.l_text_seq_length)
         template_size = (template_encoded != 0).sum() - 1  # eos
-        if not self.quite:
+        if not self.quiet:
             print('--> template_size:', template_size.item())
         template_encoded = template_encoded[:template_size]
         template_encoded[torch.where(template_encoded == self.spc_id)] = self.spc_tokens[special_token]
@@ -320,7 +471,7 @@ class ruDolphApi:
                 out = template_encoded.repeat(chunk_bs, 1).to(self.device)
                 cache = None
                 iter_range = range(template_size, min(early_stop, self.l_text_seq_length))
-                if not self.quite:
+                if not self.quiet:
                     iter_range = tqdm(iter_range)
                 for _ in iter_range:
                     logits, cache = self.model(out, attention_mask, cache=cache, use_cache=use_cache, return_loss=False)
@@ -420,7 +571,7 @@ class ruDolphApi:
         r_encoded = self.encode_text(r_template.lower().strip(), text_seq_length=self.r_text_seq_length)
         r_encoded[torch.where(r_encoded == self.spc_id)] = self.spc_tokens[r_special_token]
         template_size = (r_encoded != 0).sum() - 1  # eos
-        if not self.quite:
+        if not self.quiet:
             print('--> template_size:', template_size.item())
         r_encoded = r_encoded[:template_size]
 
@@ -446,7 +597,7 @@ class ruDolphApi:
                     self.l_text_seq_length + self.image_seq_length + template_size,
                     min(self.l_text_seq_length + self.image_seq_length + early_stop, self.total_seq_length)
                 )
-                if not self.quite:
+                if not self.quiet:
                     iter_range = tqdm(iter_range)
                 for _ in iter_range:
                     logits, cache = self.model(out, attention_mask, cache=cache, use_cache=use_cache, return_loss=False)
@@ -589,7 +740,7 @@ class ruDolphApi:
                     prompts_idx, prompts = image_prompts.image_prompts_idx, image_prompts.image_prompts
                     prompts = prompts.repeat(chunk_bs, 1)
                 iter_range = range(self.l_text_seq_length, self.l_text_seq_length + self.image_seq_length)
-                if not self.quite:
+                if not self.quiet:
                     iter_range = tqdm(iter_range)
                 for idx in iter_range:
                     idx -= self.l_text_seq_length
